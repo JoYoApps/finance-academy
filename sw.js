@@ -1,5 +1,5 @@
 // Caches the whole course on first visit so it works offline. Bumps automatically on every build.
-const CACHE = 'bfa-fb8e48beb69c';
+const CACHE = 'bfa-fbf6eae492d9';
 const FILES = ["./", "index.html", "app.css", "manifest.webmanifest", "icon-192.png", "icon-512.png", "icon-180.png", "curriculum.js", "practice.js", "week01.js", "week01x.js", "app.js", "audio/w01-day-1.mp3", "audio/w01-day-2.mp3", "audio/w01-day-3.mp3", "audio/w01-day-4.mp3", "audio/w01-day-5.mp3"];
 self.addEventListener('install', e => { e.waitUntil(caches.open(CACHE).then(c => c.addAll(FILES)).then(() => self.skipWaiting())); });
 self.addEventListener('activate', e => { e.waitUntil(caches.keys().then(ks => Promise.all(ks.filter(k => k !== CACHE && k.startsWith('bfa-')).map(k => caches.delete(k)))).then(() => self.clients.claim())); });

@@ -3,10 +3,47 @@ const C = window.CURRICULUM, P = window.PRACTICE || {};
 const WEEKS = (window.WEEKS || []).sort((a, b) => (a.month - b.month) || (a.week - b.week));
 const app = document.getElementById('app');
 const DAY = 86400000;
+/* Progress lives in memory, is mirrored to this browser's localStorage, and, inside the claude.ai
+   Artifact, is also saved to the viewer's private cloud record so it survives the browser forgetting it
+   and follows them between devices. */
+const MEM = {};
+try { for (let i = 0; i < localStorage.length; i++) { const k = localStorage.key(i); if (k.startsWith('bfa:')) MEM[k] = localStorage.getItem(k); } } catch (e) {}
+const cloud = {doc: null, timer: null, state: 'off'};
 const store = {
-  get(k, d){ try{ const v = localStorage.getItem('bfa:' + k); return v ? JSON.parse(v) : d }catch(e){ return d } },
-  set(k, v){ try{ localStorage.setItem('bfa:' + k, JSON.stringify(v)) }catch(e){} }
+  get(k, d){ const v = MEM['bfa:' + k]; try { return v ? JSON.parse(v) : d } catch (e) { return d } },
+  set(k, v){ MEM['bfa:' + k] = JSON.stringify(v); MEM['bfa:_t'] = String(Date.now());
+    try { localStorage.setItem('bfa:' + k, MEM['bfa:' + k]); localStorage.setItem('bfa:_t', MEM['bfa:_t']); } catch (e) {}
+    cloudSave(); },
+  all(){ return Object.assign({}, MEM) },
+  load(all){ Object.keys(all).forEach(k => { if (k.startsWith('bfa:')) { MEM[k] = all[k]; try { localStorage.setItem(k, all[k]) } catch (e) {} } }); }
 };
+function cloudSave(){
+  if (!cloud.doc) return;
+  clearTimeout(cloud.timer);
+  cloud.timer = setTimeout(() => { cloud.doc.set({t: +MEM['bfa:_t'] || Date.now(), data: JSON.stringify(MEM)}).then(() => setCloud('on'), () => setCloud('err')); }, 800);
+}
+function setCloud(s){ cloud.state = s; const el = document.getElementById('syncnote'); if (el) el.textContent = syncText(); }
+function syncText(){
+  return cloud.state === 'on' ? 'Your progress is saved to your Claude account and follows you to any device where you open this course on claude.ai.'
+    : cloud.state === 'err' ? 'Saving to your Claude account failed just now. Progress is still kept in this browser; it will retry on your next answer.'
+    : 'Progress is saved in this browser on this device. Each copy of the course (the claude.ai version, the web app, the offline file) and each browser keeps its own.';
+}
+async function cloudInit(){
+  try {
+    if (!window.claude || !window.claude.use) return;
+    const [db, user] = await Promise.all([claude.use('db'), claude.use('user')]);
+    if (!db || !user) return;
+    const id = await user.id(); if (!id) return;
+    const doc = db.collection('data/users/' + id).doc('progress');
+    const snap = await doc.get();
+    const remote = snap.exists ? snap.data() : null;
+    const localT = +MEM['bfa:_t'] || 0;
+    cloud.doc = doc;
+    if (remote && remote.data && (+remote.t || 0) > localT) { store.load(JSON.parse(remote.data)); route(); }
+    else if (Object.keys(MEM).length) cloudSave();
+    setCloud('on');
+  } catch (e) { setCloud('err'); }
+}
 const esc = s => String(s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const pad = n => String(n).padStart(2, '0');
 const wid = w => 'w' + pad(w.week);
@@ -176,8 +213,12 @@ function lesson(wn, n, i, keep){
   const w = findWeek(wn); if (!w) return today();
   const d = w.days.find(x => x.n === n); if (!d) return weekView(wn);
   setBrand(w);
-  cur = {w: wn, day: n, i: Math.max(0, Math.min(i || 0, d.slides.length - 1))};
-  const s = d.slides[cur.i], last = cur.i === d.slides.length - 1, key = wid(w) + 'd' + n;
+  const key = wid(w) + 'd' + n, pos = store.get('pos', {});
+  if (i == null) i = pos[key] || 0;
+  cur = {w: wn, day: n, i: Math.max(0, Math.min(i, d.slides.length - 1))};
+  const s = d.slides[cur.i], last = cur.i === d.slides.length - 1;
+  if (pos[key] !== cur.i) { pos[key] = cur.i; store.set('pos', pos); }
+  if (last) markDone(key);
   const audioEl = document.getElementById('aud');
   if (!(keep && audioEl && audioEl.dataset.key === key)) {
     app.innerHTML = `
@@ -206,6 +247,7 @@ function lesson(wn, n, i, keep){
   sl.addEventListener('touchend', e => { if (x0 === null) return; const dx = e.changedTouches[0].clientX - x0; x0 = null;
     if (Math.abs(dx) > 50) { if (dx < 0 && cur.i < d.slides.length - 1) go(1); if (dx > 0 && cur.i > 0) go(-1); } });
 }
+function markDone(key){ const dn = store.get('done', {}); if (dn[key]) return; dn[key] = todayKey(); store.set('done', dn); logActivity(); }
 function buildCheck(cb, w, d, key){
   const ids = (d.concepts || []).filter(id => CONCEPTS[id]);
   const done = store.get('done', {});
@@ -214,7 +256,7 @@ function buildCheck(cb, w, d, key){
     <div class="pager"><button class="primary" id="fin">${done[key] ? 'Completed ✓' : 'Mark lesson complete'}</button></div>
     ${d.n < w.days.length ? `<p style="text-align:right"><a href="#${wid(w)}d${d.n + 1}">Day ${d.n + 1}: ${esc(w.days[d.n].title)} →</a></p>` : `<p style="text-align:right"><a href="#quiz${w.week}">Take the Week ${w.week} quiz →</a></p>`}`;
   if (ids.length) session(cb.querySelector('#chk'), i => genQ(ids[i % ids.length]), 3, 'Lesson check');
-  cb.querySelector('#fin').onclick = e => { const dn = store.get('done', {}); dn[key] = todayKey(); store.set('done', dn); logActivity(); e.target.textContent = 'Completed ✓'; };
+  cb.querySelector('#fin').onclick = e => { markDone(key); e.target.textContent = 'Completed ✓'; };
 }
 document.addEventListener('keydown', e => {
   if (!/^#w\d+d\d+$/.test(location.hash) || /TEXTAREA|INPUT/.test(e.target.tagName)) return;
@@ -332,7 +374,7 @@ function planView(){
       <div class="panel"><b>Month exam</b>40 multiple choice (40%), 4 short answer (30%), one case study (30%). 90 minutes, pass 70%, distinction 85%.</div>
     </div>
     <h2>Use it on your phone and computer</h2>
-    <p class="lede">Progress is saved on each device. To carry it across, copy your progress code here and paste it on the other device.</p>
+    <p class="lede" id="syncnote">${syncText()}</p><p class="note">To move progress between copies or devices, copy your progress code here and paste it in the other one.</p>
     <div class="seg"><button id="exp">Copy progress code</button><button id="imp">Paste a progress code</button></div>
     <div id="impbox" hidden><textarea id="impcode" placeholder="Paste your progress code here"></textarea><p class="seg"><button class="primary" id="impgo">Load progress</button></p></div>
     <p class="note" id="bnote"></p>`;
@@ -341,14 +383,14 @@ function planView(){
     store.set('plan', {start: document.getElementById('pstart').value || todayKey(), days: days.length ? days : [1, 2, 3, 4, 5]}); planView();
   };
   document.getElementById('exp').onclick = () => {
-    const all = {}; try { for (let i = 0; i < localStorage.length; i++) { const k = localStorage.key(i); if (k.startsWith('bfa:')) all[k] = localStorage.getItem(k); } } catch (e) {}
+    const all = store.all();
     copyText('BFA1:' + btoa(unescape(encodeURIComponent(JSON.stringify(all)))), document.getElementById('bnote'), 'Progress code copied. Paste it on your other device under Plan → Paste a progress code.');
   };
   document.getElementById('imp').onclick = () => { document.getElementById('impbox').hidden = false; };
   document.getElementById('impgo').onclick = () => {
     const note = document.getElementById('bnote');
     try { const raw = document.getElementById('impcode').value.trim().replace(/^BFA1:/, ''); const all = JSON.parse(decodeURIComponent(escape(atob(raw))));
-      Object.keys(all).forEach(k => { if (k.startsWith('bfa:')) localStorage.setItem(k, all[k]); }); note.textContent = 'Progress loaded.'; setTimeout(planView, 600);
+      store.load(all); store.set('imported', todayKey()); note.textContent = 'Progress loaded.'; setTimeout(planView, 600);
     } catch (e) { note.textContent = 'That code could not be read. Copy the whole code, starting with BFA1:, and try again.'; }
   };
 }
@@ -461,7 +503,7 @@ function route(){
   let m;
   const tab = /^(w\d+d\d+|week\d+|quiz\d*|home)$/.test(h) || h === '' ? 'home' : /^c-/.test(h) ? 'practice' : /^tool-/.test(h) ? 'tools' : h;
   document.querySelectorAll('.mainnav a').forEach(a => { if (a.dataset.v === tab) a.setAttribute('aria-current', 'page'); else a.removeAttribute('aria-current'); });
-  if ((m = h.match(/^w(\d+)d(\d+)$/))) lesson(+m[1], +m[2], 0);
+  if ((m = h.match(/^w(\d+)d(\d+)$/))) lesson(+m[1], +m[2]);
   else if ((m = h.match(/^week(\d+)$/))) weekView(+m[1]);
   else if ((m = h.match(/^quiz(\d*)$/))) quiz(m[1] ? +m[1] : latest().week);
   else if ((m = h.match(/^c-(.+)$/))) conceptView(m[1]);
@@ -475,6 +517,7 @@ function route(){
 }
 window.addEventListener('hashchange', route);
 route();
+cloudInit();
 
 const net = document.getElementById('net');
 function netState(){ if (net) net.hidden = navigator.onLine; }
