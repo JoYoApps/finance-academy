@@ -113,6 +113,93 @@
       return mc(`You are asked to invest ${$(inv)} now and will receive ${$(back)} in ${n} years, with nothing in between. What annual compound return is that?`,
         irr, [(back / inv - 1) / n * 100, (back / inv - 1) * 100, irr * 1.4, irr * .7], x => pct(x),
         `(${$(back)} ÷ ${$(inv)})^(1/${n}) − 1 = ${pct(irr)} a year. Dividing the total gain by ${n} (${pct((back / inv - 1) / n * 100)}) overstates it because it ignores compounding.`);
+    },
+
+    /* ---- Week 2: business numeracy ---- */
+    marginMarkup(){
+      const cost = R(20, 400, 5), mk = pick([20, 25, 40, 50, 60, 75, 100, 150]), price = cost * (1 + mk / 100), m = (price - cost) / price * 100;
+      return mc(`An item costs ${$(cost)} and is sold for ${$(price, price % 1 ? 2 : 0)} (GST aside), a ${mk}% markup. What is the gross margin?`,
+        m, [mk, 100 - mk, mk / 2, m * 1.3], x => pct(x),
+        `Margin = profit ÷ price = ${$(price - cost, 2)} ÷ ${$(price, 2)} = ${pct(m)}. Shortcut: markup ÷ (1 + markup) = ${mk / 100} ÷ ${1 + mk / 100}. Markup uses cost as the base; margin uses price.`);
+    },
+    priceForMargin(){
+      const cost = R(12, 300), m = pick([20, 25, 30, 35, 40, 50, 60]), price = cost / (1 - m / 100);
+      return mc(`A product costs ${$(cost)}. What selling price (excluding GST) gives a ${m}% gross margin?`,
+        price, [cost * (1 + m / 100), cost / (m / 100), cost * (1 + m / 200), price * 1.15], x => $(x, 2),
+        `Price = cost ÷ (1 − margin) = ${$(cost)} ÷ ${(1 - m / 100).toFixed(2)} = ${$(price, 2)}. Adding ${m}% to cost (${$(cost * (1 + m / 100), 2)}) gives only a ${pct(m / (100 + m) * 100)} margin.`);
+    },
+    gstOut(){
+      const ex = R(10, 900) * (Math.random() < .5 ? 1 : 10), inc = ex * 1.1, g = inc / 11;
+      return mc(`A customer pays ${$(inc, 2)} including GST. How much of that is GST?`,
+        g, [inc * .1, inc - inc * .9 + 1, g * 1.5, inc * .09], x => $(x, 2),
+        `GST is one eleventh of a GST-inclusive price: ${$(inc, 2)} ÷ 11 = ${$(g, 2)}. The price before GST is ${$(inc, 2)} ÷ 1.1 = ${$(ex, 2)}. Taking 10% of ${$(inc, 2)} (${$(inc * .1, 2)}) uses the wrong base.`);
+    },
+    recovery(){
+      const f = pick([10, 20, 25, 30, 40, 50, 60, 75, 80]), g = f / (100 - f) * 100;
+      return mc(`An investment falls ${f}%. What percentage gain does it need to get back to where it started?`,
+        g, [f, f * 1.1, g * .7, 100 - f], x => pct(x),
+        `After a ${f}% fall, ${100 - f}% is left. To get back to 100 it must grow by ${f} ÷ ${100 - f} = ${pct(g)}. Falls and recoveries are measured on different bases.`);
+    },
+    stackedDiscount(){
+      const a = pick([10, 15, 20, 25, 30, 40]), b = pick([5, 10, 15, 20, 25]), tot = 100 - (100 - a) * (100 - b) / 100;
+      return mc(`A supplier gives ${a}% off, then a further ${b}% off the reduced price. What is the total discount?`,
+        tot, [a + b, a + b + 2, (a + b) / 2, tot - 4], x => pct(x),
+        `Multiply what is left: ${(1 - a / 100).toFixed(2)} × ${(1 - b / 100).toFixed(2)} = ${((100 - a) * (100 - b) / 10000).toFixed(4)}, so the total discount is ${pct(tot)}, not ${a + b}%.`);
+    },
+    points(){
+      const r1 = pick([2, 2.5, 3, 4, 4.5, 5, 6]), d = pick([0.25, 0.5, 1, 1.5, 2]), r2 = r1 + d, rel = d / r1 * 100;
+      return mc(`A loan rate rises from ${r1}% to ${r2}%. By what percentage has the interest bill risen (same balance)?`,
+        rel, [d, d * 10, rel / 2, r2], x => pct(x),
+        `The rate rose ${d} percentage points, which is ${d} ÷ ${r1} = ${pct(rel)} more interest. Percentage points and per cent are different things.`);
+    },
+    cagr(){
+      const v0 = R(1, 50) * 100000, n = R(3, 10), g = R(4, 25), v1 = Math.round(v0 * (1 + g / 100) ** n / 10000) * 10000, c = ((v1 / v0) ** (1 / n) - 1) * 100;
+      return mc(`Revenue grew from ${$(v0)} to ${$(v1)} over ${n} years. What is the compound annual growth rate (CAGR)?`,
+        c, [(v1 / v0 - 1) / n * 100, (v1 / v0 - 1) * 100, ((v1 / v0) ** (1 / (n + 1)) - 1) * 100, c * 1.3], x => pct(x),
+        `CAGR = (${$(v1)} ÷ ${$(v0)})^(1/${n}) − 1 = ${pct(c)}. Dividing total growth by ${n} (${pct((v1 / v0 - 1) / n * 100)}) ignores compounding.`);
+    },
+    geoMean(){
+      const up = pick([20, 25, 30, 40, 50, 60]), dn = pick([10, 20, 25, 30, 40, 50]), am = (up - dn) / 2, gm = (Math.sqrt((1 + up / 100) * (1 - dn / 100)) - 1) * 100;
+      return mc(`A fund returns +${up}% in year 1 and −${dn}% in year 2. What was its compound (geometric) annual return?`,
+        gm, [am, up - dn, gm - 3, am + 2], x => pct(x),
+        `√(${1 + up / 100} × ${(1 - dn / 100).toFixed(2)}) − 1 = ${pct(gm)} a year. The simple average (${pct(am)}) overstates what the investor actually earned.`);
+    },
+    weightedMargin(){
+      const s1 = R(1, 9) * 1e6, s2 = R(1, 9) * 1e6, m1 = R(10, 45), m2 = R(5, 40), w = (s1 * m1 + s2 * m2) / (s1 + s2);
+      return mc(`Division A has sales of ${$(s1)} at a ${m1}% margin. Division B has sales of ${$(s2)} at a ${m2}% margin. What is the margin for the whole business?`,
+        w, [(m1 + m2) / 2, m1 + m2, Math.max(m1, m2), w * 1.2], x => pct(x),
+        `Total gross profit ÷ total sales = (${$(s1 * m1 / 100)} + ${$(s2 * m2 / 100)}) ÷ ${$(s1 + s2)} = ${pct(w)}. A simple average of ${pct((m1 + m2) / 2)} ignores the different sizes.`);
+    },
+    pmtMonthly(){
+      const P = R(20, 120) * 10000, r = pick([5, 5.5, 6, 6.5, 7, 7.5, 8]), y = pick([20, 25, 30]), i = r / 1200, n = y * 12, pmt = P * i / (1 - (1 + i) ** -n);
+      return mc(`What is the monthly repayment on a ${$(P)} loan at ${r}% a year over ${y} years? (Spreadsheet: =PMT(${r}%/12, ${n}, ${P}))`,
+        pmt, [P * r / 100 / 12, P / n, P * (r / 100) / (1 - (1 + r / 100) ** -y) / 12 * 1.04, pmt * 1.2], x => $(x),
+        `Monthly rate ${r}% ÷ 12, ${n} payments: PMT = P × i ÷ (1 − (1 + i)^−n) = ${$(pmt, 2)}. Match the rate to the period: a monthly loan needs a monthly rate.`);
+    },
+    ltvChurn(){
+      const c = R(10, 80), ch = pick([2, 2.5, 3, 4, 5, 6, 8, 10]), ltv = c / (ch / 100);
+      return mc(`A subscription earns ${$(c)} a month of contribution per customer. ${ch}% of customers cancel each month. What is the lifetime value of a customer?`,
+        ltv, [c * 12, c * ch, ltv / 2, c * 100 / ch * 1.5], x => $(x),
+        `Average life = 1 ÷ churn = ${(100 / ch).toFixed(1)} months. LTV = ${$(c)} ÷ ${ch / 100} = ${$(ltv)}.`);
+    },
+    payback(){
+      const c = R(15, 90), m = R(3, 24), cac = c * m;
+      return mc(`It costs ${$(cac)} in marketing to win a customer, who then brings in ${$(c)} a month of contribution. What is the payback period?`,
+        m, [m / 2, m * 2, m + 6, m * 1.5], x => num(x) + ' months',
+        `Payback = CAC ÷ monthly contribution = ${$(cac)} ÷ ${$(c)} = ${m} months. Until then, each new customer is cash out the door.`);
+    },
+    ltvCac(){
+      const cac = R(40, 400, 10), ratio = pick([0.6, 0.8, 1.5, 2, 3, 4, 5]), ltv = cac * ratio;
+      const label = ratio < 1 ? 'Each new customer destroys value' : ratio < 3 ? 'Viable but thin once overheads are counted' : 'Healthy: each customer is worth well above their cost';
+      const opts = ['Each new customer destroys value', 'Viable but thin once overheads are counted', 'Healthy: each customer is worth well above their cost', 'Cannot say without the share price'];
+      return {q: `Customer lifetime value is ${$(ltv)} and acquisition cost is ${$(cac)}. Which best describes the unit economics?`, o: opts, a: opts.indexOf(label),
+        e: `LTV ÷ CAC = ${ratio.toFixed(1)}. Below 1 destroys value; 1 to 3 is viable but thin; 3 or more is the usual rule of thumb for healthy.`};
+    },
+    contributionReal(){
+      const inc = R(30, 300) * 1.1, ex = inc / 1.1, cogs = Math.round(ex * pick([.3, .4, .45, .5])), fee = ex * .02, ship = R(5, 20), c = ex - cogs - fee - ship;
+      return mc(`An online store sells an item for ${$(inc, 2)} including GST. Product cost ${$(cogs)}, card fees 2% of the ex-GST price, shipping ${$(ship)}. What is the contribution per sale?`,
+        c, [inc - cogs - fee - ship, ex - cogs, inc - cogs, c * .8], x => $(x, 2),
+        `Ex-GST price ${$(ex, 2)} − product ${$(cogs)} − fees ${$(fee, 2)} − shipping ${$(ship)} = ${$(c, 2)}. Forgetting GST or the small per-sale costs overstates it.`);
     }
   };
   window.PRACTICE = G;
