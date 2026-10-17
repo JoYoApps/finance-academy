@@ -44,7 +44,7 @@
         {q: 'Which average tells you how much your money actually grew each year?', o: ['Arithmetic mean', 'Median', 'Geometric mean', 'Mode'], a: 2, e: 'The geometric mean (compound annual return).'}
       ]},
     {id: 'mean-median', name: 'Mean vs median', day: 2,
-      explain: "<p>Put nine people in a room earning about $80,000 each. A billionaire walks in. The <b>mean</b> income is now in the hundreds of millions, but nobody in the room got richer. The <b>median</b>, the middle person's income, barely moves.</p><p>Use the median when a few huge or tiny values could distort the picture: house prices, incomes, salaries, deal sizes.</p>",
+      explain: "<p>Put nine people in a room earning about $80,000 each. Someone earning $1 billion a year walks in. The <b>mean</b> income is now in the hundreds of millions, but nobody in the room got richer. The <b>median</b>, the middle person's income, barely moves.</p><p>Use the median when a few huge or tiny values could distort the picture: house prices, incomes, salaries, deal sizes.</p>",
       example: "<table><tr><th>Five sales in a street</th></tr><tr><td class='num'>$820k, $860k, $900k, $940k, $6.2m</td></tr><tr><td>Mean: <b>$1.94m</b></td></tr><tr><td>Median: <b>$900k</b></td></tr></table>",
       gens: [],
       pool: [
@@ -95,11 +95,11 @@
       ]},
     {id: 'sheet-functions', name: 'Core spreadsheet functions', day: 4,
       explain: "<p>Think of the ten functions as three toolboxes. <b>Summarise</b>: SUM, AVERAGE/MEDIAN, SUMIFS. <b>Decide and find</b>: IF, XLOOKUP, ROUND. <b>Money over time</b>: PMT, FV/PV, NPV, IRR/XIRR.</p><p>Two traps in the money box: the rate must match the period (monthly loan → rate ÷ 12), and NPV treats its first value as one period away, so add today's outlay outside the function.</p>",
-      example: "<table><tr><th>Task</th><th>Function</th></tr><tr><td>Total March sales in QLD</td><td><code>SUMIFS</code></td></tr><tr><td>Flag LVR over 80%</td><td><code>IF</code></td></tr><tr><td>Find a product's price in a list</td><td><code>XLOOKUP</code></td></tr><tr><td>Monthly mortgage repayment</td><td><code>PMT</code></td></tr><tr><td>Value today of future rents</td><td><code>NPV</code> + outlay</td></tr><tr><td>Return on a deal with odd dates</td><td><code>XIRR</code></td></tr></table>",
+      example: "<table><tr><th>Task</th><th>Function</th></tr><tr><td>Total March sales in QLD</td><td><code>SUMIFS</code></td></tr><tr><td>Flag LVR over 80%</td><td><code>IF</code></td></tr><tr><td>Find a product's price in a list</td><td><code>XLOOKUP</code></td></tr><tr><td>Monthly mortgage repayment</td><td><code>PMT</code></td></tr><tr><td>Net value today of buying a property for its future rents</td><td><code>NPV</code> + outlay</td></tr><tr><td>Return on a deal with odd dates</td><td><code>XIRR</code></td></tr></table>",
       gens: [],
       pool: [
         {q: 'To total sales only for rows where region = "NSW" and product = "Kettle", use:', o: ['SUM', 'SUMIFS', 'XLOOKUP', 'ROUND'], a: 1, e: 'SUMIFS adds only rows meeting all conditions.'},
-        {q: 'A project costs $100,000 today and returns $30,000 a year for 5 years. The correct NPV formula is:', o: ['=NPV(8%, −100000, 30000, ..., 30000)', '=NPV(8%, five 30000s) − 100000', '=IRR(8%, 30000)', '=PMT(8%, 5, 100000)'], a: 1, e: 'Discount only the future flows with NPV, then add the outlay made today.'},
+        {q: 'A project costs $100,000 today and returns $30,000 a year for 5 years. The correct NPV formula is:', o: ['=NPV(8%, -100000, 30000, ..., 30000)', '=NPV(8%, five 30000s) − 100000', '=IRR(8%, 30000)', '=PMT(8%, 5, 100000)'], a: 1, e: 'Discount only the future flows with NPV, then add the outlay made today.'},
         {q: 'Which function returns the annual return on cash flows that occur on irregular dates?', o: ['IRR', 'XIRR', 'NPV', 'FV'], a: 1, e: 'XIRR takes actual dates.'}
       ]},
     {id: 'pmt', name: 'Loan repayments (PMT)', day: 4,

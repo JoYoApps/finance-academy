@@ -9,7 +9,7 @@
   // build an MC from the correct answer + distractor values; fmt turns numbers into labels
   function mc(q, correct, wrongs, fmt, e){
     const seen = new Set([fmt(correct)]), opts = [fmt(correct)];
-    for (const w of wrongs) { const f = fmt(w); if (!seen.has(f) && isFinite(w) && w > 0) { seen.add(f); opts.push(f); } if (opts.length === 4) break; }
+    for (const w of wrongs) { const f = fmt(w); if (!seen.has(f) && isFinite(w) && (w > 0 || correct <= 0)) { seen.add(f); opts.push(f); } if (opts.length === 4) break; }
     let k = 2; while (opts.length < 4) { const f = fmt(correct * (k % 2 ? 1 + k * .07 : 1 - k * .06)); if (!seen.has(f)) { seen.add(f); opts.push(f); } k++; }
     const order = opts.map((o, i) => [Math.random(), i]).sort((x, y) => x[0] - y[0]).map(x => x[1]);
     return {q, o: order.map(i => opts[i]), a: order.indexOf(0), e};
@@ -44,13 +44,13 @@
       const V = R(500, 1500, 50) * 1000, dep = pick([.1, .2, .25, .3]), loan = V * (1 - dep), eq = V - loan, ch = pick([-15, -10, -5, 5, 10, 15]), nv = V * (1 + ch / 100), ne = nv - loan, eqch = (ne - eq) / eq * 100;
       return mc(`You buy a property for ${$(V)} with a ${pct(dep * 100, 0)} deposit and borrow the rest. The property value then ${ch > 0 ? 'rises' : 'falls'} by ${Math.abs(ch)}%. By what percentage does your equity change?`,
         Math.abs(eqch), [Math.abs(ch), Math.abs(ch) * (1 - dep), Math.abs(eqch) / 2, Math.abs(ch) / dep / 2], x => (ch > 0 ? '+' : '−') + pct(x, 0),
-        `Equity starts at ${$(eq)}. The property moves to ${$(nv)}, the loan stays at ${$(loan)}, so equity becomes ${$(ne)}: a ${pct(eqch, 0)} change. With a ${pct(dep * 100, 0)} deposit, each 1% move in value moves equity by ${num(1 / dep)}%.`);
+        `Equity starts at ${$(eq)}. The property moves to ${$(nv)}, the loan stays at ${$(loan)}, so equity becomes ${$(ne)}: a ${pct(eqch, 0)} change. With a ${pct(dep * 100, 0)} deposit, each 1% move in value moves equity by ${(1 / dep).toLocaleString('en-AU', {maximumFractionDigits: 1})}%.`);
     },
     depreciation(){
       const cost = R(20, 300, 5) * 1000, res = R(0, 4) * cost / 20, life = R(3, 10), dep = (cost - res) / life, mode = R(0, 1);
       if (mode) { const y = R(1, life - 1), bv = cost - dep * y;
         return mc(`Equipment costs ${$(cost)}, has a residual value of ${$(res)} and a ${life}-year life (straight-line). What is its book value after ${y} year${y > 1 ? 's' : ''}?`,
-          bv, [cost - cost / life * y, cost - dep, res + dep * y, dep * y], $, `Annual depreciation = (${$(cost)} − ${$(res)}) ÷ ${life} = ${$(dep)}. After ${y} years: ${$(cost)} − ${$(dep * y)} = ${$(bv)}.`); }
+          bv, [cost - cost / life * y, cost - dep, res + dep * y, dep * y], $, `Annual depreciation = (${$(cost)} − ${$(res)}) ÷ ${life} = ${$(dep)}. After ${y} year${y > 1 ? 's' : ''}: ${$(cost)} − ${$(dep * y)} = ${$(bv)}.`); }
       return mc(`A vehicle costs ${$(cost)}, will be sold for ${$(res)} at the end of its ${life}-year life. What is the annual straight-line depreciation?`,
         dep, [cost / life, (cost + res) / life, cost - res, dep * 2], $, `(Cost − residual) ÷ life = (${$(cost)} − ${$(res)}) ÷ ${life} = ${$(dep)} a year. The cash all left on day one.`);
     },
@@ -85,7 +85,7 @@
         y, [100 / r, 72 / r / 2, r * 2, 72 / (r + 2)], x => num(x) + ' years', `72 ÷ ${r} ≈ ${num(y)} years.`);
     },
     compareOffers(){
-      const now = R(100, 900, 10) * 1000, n = R(2, 6), r = R(4, 12), later = Math.round(now * (1 + (r + R(-3, 3)) / 100) ** n / 1000) * 1000, pvl = later / (1 + r / 100) ** n;
+      const now = R(100, 900, 10) * 1000, n = R(2, 6), r = R(4, 12), later = Math.round(now * (1 + (r + pick([-3, -2, -1, 1, 2, 3])) / 100) ** n / 1000) * 1000, pvl = later / (1 + r / 100) ** n;
       const better = pvl > now ? 1 : 0;
       const o = [`${$(now)} today`, `${$(later)} in ${n} years`, 'They are worth exactly the same', 'It cannot be compared'];
       return {q: `At a ${r}% discount rate, which is worth more: ${$(now)} today or ${$(later)} in ${n} years?`, o, a: better,
@@ -104,7 +104,7 @@
         fall, [inc * d, v1 * d / 100, fall / 2, fall * 1.6], $, `At ${c1}%: ${$(v1)}. At ${c2}%: ${$(v2)}. Fall = ${$(fall)} (${pct(fall / v1 * 100)}). Small cap rate moves cause big value moves.`);
     },
     requiredReturn(){
-      const rf = pick([3.5, 4, 4.25, 4.5]), prem = pick([3, 5, 6, 8, 10, 12, 14]), req = rf + prem;
+      const rf = pick([4, 4.5, 5, 5.25]), prem = pick([3, 5, 6, 8, 10, 12, 14]), req = rf + prem;
       return mc(`Government bonds yield ${rf}%. You judge an investment needs a ${prem}% risk premium. What is your required return?`,
         req, [prem, rf * prem / 2, req * 1.5, prem - rf], x => pct(x, 2), `Required return = risk-free rate + risk premium = ${rf}% + ${prem}% = ${pct(req, 2)}.`);
     },
@@ -137,7 +137,7 @@
     recovery(){
       const f = pick([10, 20, 25, 30, 40, 50, 60, 75, 80]), g = f / (100 - f) * 100;
       return mc(`An investment falls ${f}%. What percentage gain does it need to get back to where it started?`,
-        g, [f, f * 1.1, g * .7, 100 - f], x => pct(x),
+        g, [f, f * 1.5, g * .7, 100 - f], x => pct(x),
         `After a ${f}% fall, ${100 - f}% is left. To get back to 100 it must grow by ${f} ÷ ${100 - f} = ${pct(g)}. Falls and recoveries are measured on different bases.`);
     },
     stackedDiscount(){
@@ -165,7 +165,7 @@
         `√(${1 + up / 100} × ${(1 - dn / 100).toFixed(2)}) − 1 = ${pct(gm)} a year. The simple average (${pct(am)}) overstates what the investor actually earned.`);
     },
     weightedMargin(){
-      const s1 = R(1, 9) * 1e6, s2 = R(1, 9) * 1e6, m1 = R(10, 45), m2 = R(5, 40), w = (s1 * m1 + s2 * m2) / (s1 + s2);
+      const s1 = R(1, 9) * 1e6, s2 = ((s1 / 1e6 + R(1, 8) - 1) % 9 + 1) * 1e6, m1 = R(10, 45), m2 = R(5, 40), w = (s1 * m1 + s2 * m2) / (s1 + s2);
       return mc(`Division A has sales of ${$(s1)} at a ${m1}% margin. Division B has sales of ${$(s2)} at a ${m2}% margin. What is the margin for the whole business?`,
         w, [(m1 + m2) / 2, m1 + m2, Math.max(m1, m2), w * 1.2], x => pct(x),
         `Total gross profit ÷ total sales = (${$(s1 * m1 / 100)} + ${$(s2 * m2 / 100)}) ÷ ${$(s1 + s2)} = ${pct(w)}. A simple average of ${pct((m1 + m2) / 2)} ignores the different sizes.`);
