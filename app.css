@@ -106,7 +106,7 @@ textarea{width:100%;min-height:120px;font:15px/1.5 var(--body);padding:10px;bord
 .mainnav a{display:flex;align-items:center;gap:6px}
 .mainnav svg{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
 @media (max-width:720px){
-  .mainnav{position:fixed;left:0;right:0;bottom:0;z-index:10;background:var(--card);border-top:1px solid var(--rule);display:grid;grid-template-columns:repeat(5,1fr);gap:0;padding:4px 4px calc(4px + env(safe-area-inset-bottom,0px))}
+  .mainnav{position:fixed;left:0;right:0;bottom:0;z-index:10;background:var(--card);border-top:1px solid var(--rule);display:grid;grid-template-columns:repeat(6,1fr);gap:0;padding:4px 4px calc(4px + env(safe-area-inset-bottom,0px))}
   .mainnav a{flex-direction:column;gap:2px;font-size:11px;padding:6px 2px;border-radius:8px;text-align:center}
   .mainnav svg{width:22px;height:22px}
   .wrap#app{padding-bottom:110px}
@@ -192,3 +192,14 @@ input[type=date],input[type=number],input[type=search],select{font:16px var(--bo
 #cp-sens{margin-top:12px}
 .unsw{font-size:13px;color:var(--green);font-weight:500;margin:4px 0}
 .month .unsw-tag{font:600 11px var(--body);color:var(--green)}
+
+/* ---- extras and exams ---- */
+.bite{background:var(--card);border:1px solid var(--rule);border-radius:12px;padding:16px 18px;margin:12px 0}
+.bite h3{margin:4px 0 8px}.bite .src{font-size:13px;color:var(--muted);font-style:italic}
+.bite details summary{cursor:pointer;font-weight:600;color:var(--green)}
+.bitecard{border-color:var(--brass)}
+.hero.exam{background:var(--brass)}
+.opt.sel{border-color:var(--green);background:var(--green-soft);font-weight:600}
+.score.late{color:var(--bad)}
+.month .body.bites{padding-left:0;font-size:inherit}
+.month .body .bite{margin:10px 0}

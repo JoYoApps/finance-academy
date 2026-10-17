@@ -47,7 +47,7 @@
         {q: 'Which statement shows the position at a single date?', o: ['Income statement', 'Balance sheet', 'Cash flow statement', 'Budget'], a: 1, e: 'The balance sheet is a snapshot at one date.'},
         {q: 'Where would you find wages expense for the year?', o: ['Balance sheet', 'Income statement', 'Notes only', 'Directors\' report'], a: 1, e: 'Expenses over a period go in the income statement (P&L).'},
         {q: 'A warehouse bought 20 years ago is most likely shown on the balance sheet at:', o: ['Today\'s market value', 'Cost less accumulated depreciation', 'Insurance value', 'Its rental income'], a: 1, e: 'Most assets are carried at cost less depreciation, so book value can differ greatly from market value.'},
-        {q: 'Current liabilities are those due:', o: ['Within 12 months', 'Within 5 years', 'On demand only', 'After 12 months'], a: 0, e: 'Current means due within twelve months.'}
+        {q: 'Current liabilities are those due:', o: ['Within 12 months', 'Within 5 years', 'On demand only', 'After 12 months'], a: 0, e: 'Current generally means due within twelve months (or within the normal operating cycle).'}
       ]},
     {id: 'accrual', name: 'Accrual accounting: profit vs cash', day: 3,
       explain: "<p>Imagine you mow lawns. You finish a $500 job on 28 June and the client pays on 15 July. Under accrual accounting the $500 counts as June income, because that is when you <b>earned</b> it, even though your bank account only sees it in July.</p><p>So profit answers <i>“did we create value this period?”</i> and cash answers <i>“can we pay the bills?”</i> You need both answers. A business dies when it runs out of cash, not when it runs out of profit.</p>",
@@ -65,7 +65,7 @@
       gens: ['depreciation'], pool: []},
     {id: 'cashcycle', name: 'Working capital and the cash cycle', day: 3,
       explain: "<p>Follow one dollar. You pay a supplier for stock. The stock sits on the shelf. You sell it on credit. The customer eventually pays. The days between <b>your dollar going out</b> and <b>a dollar coming back</b> is the cash conversion cycle.</p><p class='formula'>Days stock + Days customers take − Days you take to pay suppliers</p><p>The longer the cycle, the more of your own cash is tied up. Grow fast with a long cycle and you can run out of cash while making a profit.</p>",
-      example: "<p>Builder: materials sit on site 20 days, clients pay 45 days after invoice, suppliers paid in 30 days.</p><p class='formula'>20 + 45 − 30 = 35 days</p><p>If the builder spends $20,000 a day on materials and labour, about 35 × $20,000 = $700,000 is tied up at any time. Win a contract that doubles work and it needs another $700,000 of funding.</p>",
+      example: "<p>Builder: materials sit on site 20 days, clients pay 45 days after invoice, suppliers paid in 30 days.</p><p class='formula'>20 + 45 − 30 = 35 days</p><p>If the builder spends $20,000 a day on materials, about 35 × $20,000 = $700,000 is tied up at any time (wages, paid weekly, tie up even more). Win a contract that doubles work and it needs another $700,000 of funding.</p>",
       gens: ['cashCycle', 'extraCash'], pool: []},
     {id: 'compound', name: 'Compound interest', day: 4,
       explain: "<p>Compounding is a snowball rolling downhill: it picks up snow, and the snow it picked up picks up more snow.</p><p>With simple interest you earn on the original amount only. With compound interest you also earn on last year's interest.</p><p class='formula'>FV = PV × (1 + r)<sup>n</sup></p><p>Time is the big lever. $10,000 at 7% becomes about $19,700 in 10 years, $38,700 in 20, and $76,100 in 30.</p>",
@@ -95,7 +95,7 @@
       gens: ['requiredReturn', 'impliedReturn'], pool: []},
     {id: 'deal', name: 'Appraising an offer', day: 5,
       explain: "<p>Every offer, however it is dressed up, is a set of cash flows with a promise attached. The six questions strip off the packaging:</p><ol><li>What do I give and get, and when?</li><li>What is it worth in today's money?</li><li>How certain is it, and what protects me?</li><li>Does the return beat my required return?</li><li>What else could I do with the money?</li><li>What is the worst case, and could I survive it?</li></ol><p>Write the answers down. Most bad deals fall apart at question 1 or 3.</p>",
-      example: "<p><b>Offer:</b> invest $80,000 in a mate's food truck for 25% of profits, estimated $40,000 a year.</p><ol><li>Give $80k now. Get 25% × $40k = $10k a year, if estimates hold. No exit date.</li><li>$10k a year forever at 20% ≈ $10k ÷ 0.20 = $50k. Less than $80k.</li><li>No security, profits are self-reported, estimates unproven.</li><li>Implied return 12.5% vs required 20%+.</li><li>Alternatives: term deposit around 4–5%, low risk.</li><li>Worst case: lose $80k and have a strained friendship.</li></ol><p><b>Verdict:</b> renegotiate (bigger share, reporting rights, a buy-back clause) or decline.</p>",
+      example: "<p><b>Offer:</b> invest $80,000 in a mate's food truck for 25% of profits, estimated $40,000 a year.</p><ol><li>Give $80k now. Get 25% × $40k = $10k a year, if estimates hold. No exit date.</li><li>$10k a year forever at 20% ≈ $10k ÷ 0.20 = $50k. Less than $80k.</li><li>No security, profits are self-reported, estimates unproven.</li><li>Implied return 12.5% vs required 20%+.</li><li>Alternatives: term deposit around 5%, low risk.</li><li>Worst case: lose $80k and have a strained friendship.</li></ol><p><b>Verdict:</b> renegotiate (bigger share, reporting rights, a buy-back clause) or decline.</p>",
       gens: ['impliedReturn'],
       pool: [
         {q: 'The first of the six questions of any deal is:', o: ['What is the return?', 'What exactly do I give and get, and when?', 'Who else has invested?', 'What is the tax benefit?'], a: 1, e: 'Write down every cash flow and its timing before anything else.'},
@@ -128,7 +128,7 @@
     ['Diversification', 'Spreading investments so that losses in some are offset by gains in others.'],
     ['EBITDA', 'Earnings before interest, tax, depreciation and amortisation. A rough, incomplete proxy for operating cash.'],
     ['Equity', 'The owners\' interest: assets minus liabilities. Also called net assets.'],
-    ['Expense', 'A decrease in economic benefits during a period that reduces equity (other than distributions to owners).'],
+    ['Expense', 'A decrease in assets, or increase in liabilities, that reduces equity (other than distributions to owners).'],
     ['Fixed cost', 'A cost that does not change with sales volume in the short run, such as rent.'],
     ['Future value', 'What a sum invested today will grow to at a given rate over time.'],
     ['Income statement', 'Profit and loss (P&L): income and expenses over a period.'],

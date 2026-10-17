@@ -176,6 +176,7 @@ function weekList(w){
   const done = store.get('done', {}), qs = store.get('quiz-' + wid(w), {}), answered = Object.keys(qs).length;
   return `<div class="days">
     ${w.days.map(d => { const k = wid(w) + 'd' + d.n; return `<a class="day" href="#${k}"><span class="no">Day ${d.n}</span><span class="t">${esc(d.title)}<span>${d.slides.length} slides · audio lecture · practice</span></span><span class="tick ${done[k] ? 'on' : ''}" aria-label="${done[k] ? 'Completed' : 'Not completed'}">✓</span></a>` }).join('')}
+    ${(w.bites || []).length ? `<a class="day" href="#extras"><span class="no">Extra</span><span class="t">Knowledge bites<span>${w.bites.length} short extras with quick questions · ${w.bites.filter((b, i) => store.get('bites', {})[wid(w) + 'b' + (i + 1)]).length} read</span></span><span></span></a>` : ''}
     <a class="day quizrow" href="#quiz${w.week}"><span class="no">Wknd</span><span class="t">Week ${w.week} quiz<span>${w.quiz.mc.length} multiple choice · ${w.quiz.written.length} written${answered ? ` · ${answered} answered` : ''}</span></span><span class="tick ${answered >= w.quiz.mc.length ? 'on' : ''}">✓</span></a>
   </div>`;
 }
@@ -186,6 +187,7 @@ function today(){
   const built = nl && findWeek(nl.week);
   const due = dueConcepts(), help = struggling(), st = streak();
   const done = store.get('done', {}), doneCount = Object.keys(done).length;
+  const xm = nextExamDue(), bod = biteOfDay();
   const hour = new Date().getHours(), hi = hour < 12 ? 'Good morning' : hour < 18 ? 'Good afternoon' : 'Good evening';
   app.innerHTML = `
     <p class="eyebrow" style="margin-top:28px">${hi}, Mitch</p>
@@ -197,7 +199,9 @@ function today(){
     </div>
     ${nl ? `<a class="hero" href="${built ? '#' + lessonKey(nl) : '#plan'}"><span class="eyebrow">Next lesson · Month ${nl.month} · Week ${nl.week} · Day ${nl.day}</span><h2>${esc(nl.title)}</h2><span class="note">${built ? 'Slides, a ten-minute audio lecture and practice questions' : 'This week is being written. It arrives on Saturday.'}</span><span class="go">${built ? 'Start →' : 'See plan →'}</span></a>` : ''}
     ${help.length ? `<section class="helpbox"><span class="eyebrow">Extra help</span><h3>You're finding ${help.length === 1 ? 'this concept' : 'these concepts'} tricky</h3><p class="note">Each one has a different explanation, a worked example and fresh practice questions.</p><div class="chips">${help.map(id => `<a class="chip s-struggling" href="#c-${id}">${esc(CONCEPTS[id].name)} →</a>`).join('')}</div></section>` : ''}
+    ${xm ? `<a class="hero exam" href="#exam-${xm.id}"><span class="eyebrow">${EXAM_KIND[xm.kind]} ready</span><h2>${esc(xm.title)}</h2><span class="note">You have finished every lesson it covers. Sit it to lock in what you have learned.</span><span class="go">Go to exam →</span></a>` : ''}
     <section class="review"><div><span class="eyebrow">Spaced review</span><h3>${due.length ? `${due.length} concept${due.length > 1 ? 's' : ''} due for review` : 'Nothing due right now'}</h3><p class="note">${due.length ? 'Short, fresh questions on things you have learned, timed so they stick.' : 'Concepts come back for review just before you would forget them. Practise anything any time.'}</p></div><a class="btn ${due.length ? 'primary' : ''}" href="#practice">${due.length ? 'Start review' : 'Practise'}</a></section>
+    ${bod ? `<section class="review bitecard"><div><span class="eyebrow">Today's knowledge bite · ${esc(bod.tag || 'Extra')}</span><h3>${esc(bod.t)}</h3><p class="note">A one-minute extra beyond the lessons, with a question at the end.</p></div><a class="btn" href="#extras">Read it</a></section>` : ''}
     <h2>Week ${w.week}: ${esc(w.title)}</h2>
     ${weekList(w)}
     ${WEEKS.length > 1 ? `<h2>Other weeks</h2><div class="days">${WEEKS.filter(x => x !== w).map(x => `<a class="day" href="#week${x.week}"><span class="no">Wk ${x.week}</span><span class="t">${esc(x.title)}<span>Month ${x.month}</span></span><span></span></a>`).join('')}</div>` : ''}`;
@@ -366,13 +370,17 @@ function planView(){
       <summary><span class="mn">M${pad(m.n)}</span><span><h3>${esc(m.title)}</h3><p class="goal">${esc(m.goal)}</p><span class="mbar"><i style="width:${dc / ls.length * 100}%"></i></span><span class="note">${dc}/${ls.length} lessons · starts ${fmtDate(first)}</span></span></summary>
       <div class="body"><p class="src">Draws on: ${esc(m.draws_on)}</p>${(m.unsw || []).length ? `<p class="unsw">UNSW Applied Finance: ${esc(m.unsw.join(' · '))}</p>` : ''}
         ${m.weeks.map((w, i) => { const n = (m.n - 1) * 4 + i + 1; return `<div class="wk"><b>${builtWeeks.has(n) ? `<a href="#week${n}">Week ${n}: ${esc(w.title)}</a>` : `Week ${n}: ${esc(w.title)}`}</b><ol>${w.days.map(d => `<li>${esc(d)}</li>`).join('')}</ol></div>` }).join('')}
-        <p class="note">Month-end exam: ${fmtDate(dates[ALL_LESSONS.indexOf(ls[ls.length - 1])])} or after.</p></div></details>` }).join('')}
+        <p class="note"><a href="#exam-m${pad(m.n)}">Month ${m.n} exam</a>: ${fmtDate(dates[ALL_LESSONS.indexOf(ls[ls.length - 1])])} or after.${TERMS.some(t => t.months[t.months.length - 1] === m.n) ? ` Then the <a href="#exam-t${TERMS.find(t => t.months[t.months.length - 1] === m.n).n}">Term ${TERMS.find(t => t.months[t.months.length - 1] === m.n).n} exam</a>.` : ''}</p></div></details>` }).join('')}
     <h2>How you are assessed</h2>
     <div class="grid2">
       <div class="panel"><b>Daily</b>Three-question check at the end of each lesson, plus spaced review.</div>
       <div class="panel"><b>Weekly quiz</b>15 multiple choice (pass 80%) and 4 to 5 written answers, marked by Claude.</div>
       <div class="panel"><b>Month exam</b>40 multiple choice (40%), 4 short answer (30%), one case study (30%). 90 minutes, pass 70%, distinction 85%.</div>
+      <div class="panel"><b>Term exam</b>Every three or four months, a cumulative exam on the whole term. 60 multiple choice, 4 short answer, one case study. 2 hours.</div>
+      <div class="panel"><b>Final exam</b>The whole course: 80 multiple choice, 6 short answer, one case study. 3 hours.</div>
+      <div class="panel"><b>Knowledge bites</b>Optional extras each week with quick quizzes. They feed your spaced review.</div>
     </div>
+    <p><a class="btn primary" href="#exams">See all exams</a></p>
     <h2>Use it on your phone and computer</h2>
     <p class="lede" id="syncnote">${syncText()}</p><p class="note">To move progress between copies or devices, copy your progress code here and paste it in the other one.</p>
     <div class="seg"><button id="exp">Copy progress code</button><button id="imp">Paste a progress code</button></div>
@@ -393,6 +401,237 @@ function planView(){
       store.load(all); store.set('imported', todayKey()); note.textContent = 'Progress loaded.'; setTimeout(planView, 600);
     } catch (e) { note.textContent = 'That code could not be read. Copy the whole code, starting with BFA1:, and try again.'; }
   };
+}
+
+/* ---------- extras: knowledge bites and quick quizzes ---------- */
+// weekNNb.js adds w.bites = [{t, tag, b (html), src, q: {q, o, a, e, c?}}]: short extra learning beyond the lessons.
+const BITES = [];
+WEEKS.forEach(w => (w.bites || []).forEach((b, i) => BITES.push(Object.assign({week: w.week, month: w.month, id: wid(w) + 'b' + (i + 1)}, b))));
+function currentWeekNo(){ const nl = nextLesson(); return nl ? nl.week : latest().week; }
+function biteOfDay(){
+  const upto = Math.max(currentWeekNo(), WEEKS[0] ? WEEKS[0].week : 1), pool = BITES.filter(b => b.week <= upto);
+  if (!pool.length) return null;
+  const k = todayKey(), cur = store.get('bod', {});
+  if (cur.d === k && BITES.find(b => b.id === cur.id)) return BITES.find(b => b.id === cur.id);
+  const seen = store.get('bites', {}), fresh = pool.filter(b => !seen[b.id]);
+  const pick = (fresh.length ? fresh : pool)[Math.floor(Math.random() * (fresh.length || pool.length))];
+  store.set('bod', {d: k, id: pick.id});
+  return pick;
+}
+function markBite(id){ const s = store.get('bites', {}); if (!s[id]) { s[id] = todayKey(); store.set('bites', s); } }
+function biteCard(b, open){
+  const seen = store.get('bites', {})[b.id];
+  return `<article class="bite" id="${b.id}"><span class="eyebrow">${esc(b.tag || 'Knowledge bite')} · Week ${b.week}</span><h3>${esc(b.t)}</h3>${wrapTables(b.b)}
+    ${b.src ? `<p class="src">Source: ${esc(b.src)}</p>` : ''}
+    ${b.q ? `<details ${open ? 'open' : ''}><summary>Test yourself</summary><div class="bq" data-id="${b.id}"></div></details>` : ''}
+    ${seen ? '' : `<p><button class="mk" data-id="${b.id}">Got it</button></p>`}</article>`;
+}
+function wireBites(root){
+  root.querySelectorAll('.bq').forEach(el => { const b = BITES.find(x => x.id === el.dataset.id); const q = biteQ(b);
+    renderQ(el, q, 'Bite', ok => { if (q.c) record(q.c, ok); biteResult(b.id, ok); markBite(b.id); }); });
+  root.querySelectorAll('.mk').forEach(x => x.onclick = () => { markBite(x.dataset.id); x.parentNode.innerHTML = '<span class="note">Saved to your bites ✓</span>'; });
+}
+function biteQ(b){ const order = shuffle(b.q.o.map((_, i) => i)); return {q: b.q.q, o: order.map(i => b.q.o[i]), a: order.indexOf(b.q.a), e: b.q.e, c: b.q.c}; }
+function biteResult(id, ok){ const r = store.get('biteq', {}); r[id] = (r[id] || []).concat(ok ? 1 : 0).slice(-4); store.set('biteq', r); logActivity(); }
+function extrasView(){
+  setBrand(latest());
+  const upto = currentWeekNo(), b = biteOfDay(), seen = store.get('bites', {}), r = store.get('biteq', {});
+  const avail = BITES.filter(x => x.week <= Math.max(upto, WEEKS[0].week));
+  app.innerHTML = `
+    <p class="eyebrow" style="margin-top:28px">Extra learning</p><h1>Knowledge bites</h1>
+    <p class="lede">Short extras that go beyond the lessons: real Australian examples, myths, pro tips and the rules behind the numbers. Each takes a minute or two and ends with a question. New bites arrive with every week of the course.</p>
+    <div class="stats"><div><b>${Object.keys(seen).length}</b><span>of ${BITES.length} bites read</span></div><div><b>${Object.values(r).filter(h => h[h.length - 1]).length}</b><span>bite questions right</span></div><div><b>${streak()}</b><span>day streak</span></div></div>
+    ${b ? `<h2>Today's bite</h2>${biteCard(b, false)}` : ''}
+    <section class="review"><div><span class="eyebrow">Two-minute quiz</span><h3>Five quick questions</h3><p class="note">Mixed bite questions from the weeks you have reached, with the ones you got wrong first.</p></div><button class="primary" id="bquiz">Start quick quiz</button></section>
+    <div id="bsess"></div>
+    <h2>All bites</h2>
+    ${WEEKS.filter(w => (w.bites || []).length).map(w => `<details class="month"><summary><span class="mn">W${pad(w.week)}</span><span><h3>${esc(w.title)}</h3><span class="note">${w.bites.length} bites · ${BITES.filter(x => x.week === w.week && seen[x.id]).length} read${w.week > upto ? ' · ahead of where you are' : ''}</span></span></summary>
+      <div class="body bites">${BITES.filter(x => x.week === w.week).map(x => biteCard(x, false)).join('')}</div></details>`).join('')}`;
+  wireBites(app);
+  document.getElementById('bquiz').onclick = () => {
+    const withQ = avail.filter(x => x.q), wrongFirst = shuffle(withQ).sort((p, q) => ((r[p.id] || [1]).slice(-1)[0]) - ((r[q.id] || [1]).slice(-1)[0]));
+    const pick = wrongFirst.slice(0, 5), box = document.getElementById('bsess'); box.innerHTML = '';
+    if (!pick.length) { box.innerHTML = '<p class="note">No bite questions yet.</p>'; return; }
+    session(box, i => { const q = biteQ(pick[i % pick.length]); q.bid = pick[i % pick.length].id; return q; }, Math.min(5, pick.length), 'Quick quiz');
+    box.scrollIntoView({behavior: 'smooth'});
+  };
+}
+
+/* ---------- exams: month, term and final ---------- */
+// Assessment ladder: lesson checks → weekly quiz → month exam → term exam (every few months, cumulative) → final exam.
+// examMM.js / examT1.js etc. push hand-written papers into window.EXAMS = [{id, mc:[{q,o,a,e,c}], short:[{q,a,marks}], case:{title, brief, parts:[{q,a,marks}]}}].
+// Without a hand-written paper, the exam is assembled from the course's question banks for the weeks it covers.
+const PAPERS = {}; (window.EXAMS || []).forEach(x => { PAPERS[x.id] = x; });
+const TERMS = C.terms || [{n: 1, title: 'Foundations', months: [1, 2, 3]}, {n: 2, title: 'The Economy and the Firm', months: [4, 5, 6]}, {n: 3, title: 'Corporate Finance, Valuation and Law', months: [7, 8, 9]},
+  {n: 4, title: 'Governance, Investing and Property', months: [10, 11, 12]}, {n: 5, title: 'Valuation, Credit and Risk', months: [13, 14, 15]}, {n: 6, title: 'Global, Private Markets and Capstone', months: [16, 17, 18, 19]}];
+const weeksOfMonths = ms => ALL_LESSONS.filter(l => ms.includes(l.month)).map(l => l.week).filter((v, i, a) => a.indexOf(v) === i);
+function examList(){
+  const out = [];
+  C.months.forEach(m => {
+    out.push({id: 'm' + pad(m.n), kind: 'month', title: `Month ${m.n} exam: ${m.title}`, months: [m.n], mcN: 40, shortN: 4, minutes: 90});
+    const t = TERMS.find(t => t.months[t.months.length - 1] === m.n);
+    if (t) out.push({id: 't' + t.n, kind: 'term', title: `Term ${t.n} exam: ${t.title}`, months: t.months, mcN: 60, shortN: 4, minutes: 120});
+  });
+  out.push({id: 'final', kind: 'final', title: 'Final exam: the whole course', months: C.months.map(m => m.n), mcN: 80, shortN: 6, minutes: 180});
+  out.forEach(x => { x.weeks = weeksOfMonths(x.months); x.lessons = ALL_LESSONS.filter(l => x.months.includes(l.month)); });
+  return out;
+}
+const EXAM_KIND = {month: 'Month exam', term: 'Term exam (cumulative)', final: 'Final exam'};
+function examState(x){
+  const done = store.get('done', {}), left = x.lessons.filter(l => !done[lessonKey(l)]).length;
+  const built = x.weeks.every(n => findWeek(n)), att = store.get('exam-' + x.id, []), best = att.reduce((b, a) => Math.max(b, a.total || 0), -1);
+  return {left, built, att, best, passed: best >= 70, ready: built && left === 0};
+}
+function examBank(x){
+  // MC items from every concept pool, generator and weekly quiz in the weeks covered, spread evenly across weeks
+  const byWeek = x.weeks.filter(findWeek).map(n => {
+    const w = findWeek(n), items = [];
+    (w.concepts || []).forEach(c => { (c.pool || []).forEach(q => items.push(Object.assign({c: c.id}, q))); (c.gens || []).filter(g => P[g]).forEach(g => items.push({gen: g, c: c.id})); });
+    w.quiz.mc.forEach(q => items.push(q));
+    return shuffle(items);
+  });
+  return byWeek;
+}
+function makeMC(item){
+  if (item.gen) return Object.assign(P[item.gen](), {c: item.c});
+  const order = shuffle(item.o.map((_, i) => i));
+  return {q: item.q, o: order.map(i => item.o[i]), a: order.indexOf(item.a), e: item.e, c: item.c};
+}
+function buildPaper(x){
+  const hand = PAPERS[x.id], paper = {mc: [], short: [], case: null, hand: !!hand};
+  const seenQ = new Set(), add = it => { const k = it.gen ? it.gen + Math.random() : it.q; if (seenQ.has(k)) return false; seenQ.add(k); paper.mc.push(makeMC(it)); return true; };
+  if (hand && hand.mc) shuffle(hand.mc).slice(0, x.mcN).forEach(add);
+  // term and final exams also draw on the hand-written month papers they cover
+  if (x.kind !== 'month') shuffle([].concat(...x.months.map(m => (PAPERS['m' + pad(m)] || {}).mc || []))).slice(0, Math.round(x.mcN / 2)).forEach(it => paper.mc.length < x.mcN && add(it));
+  const banks = examBank(x); let guard = 0;
+  while (paper.mc.length < x.mcN && banks.some(b => b.length) && guard++ < 5000) banks.forEach(b => { if (paper.mc.length < x.mcN && b.length) add(b.pop()); });
+  paper.mc = shuffle(paper.mc);
+  const written = [].concat(...x.weeks.filter(findWeek).map(n => findWeek(n).quiz.written.map(q => ({q: q.q, a: q.a, marks: 5}))));
+  const monthShorts = x.kind === 'month' ? [] : [].concat(...x.months.map(m => (PAPERS['m' + pad(m)] || {}).short || []));
+  paper.short = (hand && hand.short ? hand.short.slice() : []).concat(shuffle(monthShorts), shuffle(written)).slice(0, x.shortN).map(q => ({q: q.q, a: q.a, marks: q.marks || 5}));
+  const cs = (hand && hand.case) || (x.kind !== 'month' && shuffle(x.months.map(m => (PAPERS['m' + pad(m)] || {}).case).filter(Boolean))[0]);
+  paper.case = cs || (written.length ? {title: 'Case study', brief: 'Answer in full sentences, showing any working.', parts: [written.sort((p, q) => q.q.length - p.q.length)[0]].map(q => ({q: q.q, a: q.a, marks: 10}))} : null);
+  return paper;
+}
+function examsView(){
+  setBrand(latest());
+  const list = examList(), next = list.find(x => !examState(x).passed);
+  app.innerHTML = `
+    <p class="eyebrow" style="margin-top:28px">Assessment</p><h1>Exams</h1>
+    <p class="lede">Exams lock in what you have learned. Each month ends with an exam on that month. Every term (three or four months) has a cumulative exam that brings back everything since the last one, and the course ends with a final exam. You need 70% to pass and 85% for a distinction. If you miss, review the concepts it flags and sit a fresh paper a day or two later.</p>
+    <div class="grid2">
+      <div class="panel"><b>Month exam</b>40 multiple choice (40%), 4 short answer (30%), one case study (30%). 90 minutes.</div>
+      <div class="panel"><b>Term exam</b>Cumulative over the term. 60 multiple choice (40%), 4 short answer (30%), one case study (30%). 2 hours.</div>
+      <div class="panel"><b>Final exam</b>The whole course. 80 multiple choice (40%), 6 short answer (30%), one case study (30%). 3 hours.</div>
+    </div>
+    <h2>Your exams</h2>
+    <div class="days">${list.map(x => { const s = examState(x);
+      const note = s.passed ? `Passed · best ${s.best}%${s.best >= 85 ? ' · distinction' : ''}` : s.att.length ? `Best ${s.best}% · ${s.att.length} attempt${s.att.length > 1 ? 's' : ''} · not yet passed` : s.ready ? 'Ready to sit' : !s.built ? 'Unlocks when its lessons are written and finished' : `Unlocks after ${s.left} more lesson${s.left > 1 ? 's' : ''}`;
+      return `<a class="day ${x.kind !== 'month' ? 'quizrow' : ''}" href="#exam-${x.id}"><span class="no">${x.kind === 'month' ? 'M' + pad(x.months[0]) : x.kind === 'term' ? 'T' + x.id.slice(1) : 'FIN'}</span><span class="t">${esc(x.title)}<span>${note}</span></span><span class="tick ${s.passed ? 'on' : ''}">✓</span></a>`; }).join('')}</div>
+    ${next ? `<p class="note">Next up: <a href="#exam-${next.id}">${esc(next.title)}</a>.</p>` : ''}`;
+}
+let examTimer = null;
+function examView(id){
+  clearInterval(examTimer);
+  const x = examList().find(e => e.id === id); if (!x) return examsView();
+  setBrand(latest());
+  const s = examState(x), K = 'examcur-' + x.id, cur = store.get(K, null);
+  if (cur && !cur.submitted) return examSit(x, cur);
+  if (cur && cur.submitted) return examMark(x, cur);
+  app.innerHTML = `
+    <div class="lesson-head"><span class="eyebrow">${EXAM_KIND[x.kind]}</span><a class="back" href="#exams">← All exams</a><h1>${esc(x.title)}</h1></div>
+    <p class="lede">Covers Weeks ${x.weeks[0]} to ${x.weeks[x.weeks.length - 1]}. ${x.mcN} multiple choice (40%), ${x.shortN} short answer (30%), one case study (30%). ${x.minutes} minutes. Pass 70%, distinction 85%.</p>
+    <div class="panel"><b>Exam conditions</b><p>Sit it in one go, without notes. A calculator and the Toolkit calculators are fine. Multiple choice is marked when you submit, not as you go. Then you mark your written answers against the model answers, or copy them to Claude for marking.</p></div>
+    ${!s.built ? `<p class="note">Some weeks in this exam are not written yet. You can sit a practice paper on what exists now, but it will not count until the rest arrives.</p>` : s.left ? `<p class="note">You have ${s.left} lesson${s.left > 1 ? 's' : ''} in this ${x.kind === 'month' ? 'month' : 'period'} still to finish. Sitting it early is allowed but the exam works best after the lessons and quizzes.</p>` : ''}
+    ${s.att.length ? `<h2>Past attempts</h2><div class="tbl"><table class="plain"><tr><th>Date</th><th>Multiple choice</th><th>Written</th><th>Total</th></tr>${s.att.map(a => `<tr><td>${esc(a.date)}</td><td class="num">${a.mc}%</td><td class="num">${a.written == null ? 'not marked' : a.written + '%'}</td><td class="num"><b>${a.total == null ? '–' : a.total + '%'}</b>${a.total >= 85 ? ' D' : a.total >= 70 ? ' P' : ''}</td></tr>`).join('')}</table></div>` : ''}
+    <p class="seg" style="margin-top:20px"><button class="primary" id="xstart">${s.att.length ? 'Sit a fresh paper' : 'Start the exam'}</button></p>`;
+  document.getElementById('xstart').onclick = () => { const p = buildPaper(x); if (!p.mc.length) { alertNote('No questions are available for this exam yet.'); return; } store.set(K, {paper: p, start: Date.now(), mc: {}, w: {}, early: !s.ready}); examView(id); };
+}
+function alertNote(t){ const n = document.createElement('p'); n.className = 'note'; n.textContent = t; app.appendChild(n); }
+function examSit(x, cur){
+  const K = 'examcur-' + x.id, p = cur.paper;
+  const wq = p.short.map((q, i) => ({k: 's' + i, label: 'B' + (i + 1), q: q.q, marks: q.marks})).concat(p.case ? p.case.parts.map((q, i) => ({k: 'c' + i, label: 'C' + (i + 1), q: q.q, marks: q.marks})) : []);
+  app.innerHTML = `
+    <div class="lesson-head"><span class="eyebrow">${EXAM_KIND[x.kind]} · in progress</span><h1>${esc(x.title)}</h1></div>
+    <div class="score" id="xclock"></div>
+    <h2>Section A · Multiple choice (40%)</h2><div id="xmc"></div>
+    <h2>Section B · Short answer (30%)</h2>
+    ${wq.filter(q => q.k[0] === 's').map(q => `<div class="q"><span class="qn">${q.label} · ${q.marks} marks</span><p class="qt">${esc(q.q)}</p><textarea data-k="${q.k}">${esc(cur.w[q.k] || '')}</textarea></div>`).join('')}
+    ${p.case ? `<h2>Section C · Case study (30%)</h2><div class="panel"><b>${esc(p.case.title || 'Case study')}</b>${p.case.brief ? wrapTables(/^</.test(p.case.brief) ? p.case.brief : '<p>' + esc(p.case.brief) + '</p>') : ''}</div>
+      ${wq.filter(q => q.k[0] === 'c').map(q => `<div class="q"><span class="qn">${q.label} · ${q.marks} marks</span><p class="qt">${esc(q.q)}</p><textarea data-k="${q.k}">${esc(cur.w[q.k] || '')}</textarea></div>`).join('')}` : ''}
+    <p class="seg" style="margin-top:24px"><button class="primary" id="xsub">Submit exam</button><button id="xquit">Abandon this paper</button></p><p class="note" id="xnote">Your answers save as you go, so you can close the app and come back.</p>`;
+  const box = document.getElementById('xmc');
+  p.mc.forEach((q, i) => {
+    const el = document.createElement('div'); el.className = 'q';
+    el.innerHTML = `<span class="qn">A${i + 1}</span><p class="qt">${esc(q.q)}</p><div class="opts">${q.o.map((o, j) => `<button class="opt ${cur.mc[i] === j ? 'sel' : ''}" data-j="${j}" aria-pressed="${cur.mc[i] === j}">${String.fromCharCode(65 + j)}. ${esc(o)}</button>`).join('')}</div>`;
+    el.querySelectorAll('.opt').forEach(b => b.onclick = () => { const c = store.get(K, cur); c.mc[i] = +b.dataset.j; store.set(K, c); cur = c;
+      el.querySelectorAll('.opt').forEach(o => { const on = o === b; o.classList.toggle('sel', on); o.setAttribute('aria-pressed', on); }); tick(); });
+    box.appendChild(el);
+  });
+  app.querySelectorAll('textarea').forEach(t => t.oninput = () => { const c = store.get(K, cur); c.w[t.dataset.k] = t.value; store.set(K, c); cur = c; });
+  const clock = document.getElementById('xclock');
+  function tick(){
+    const left = cur.start + x.minutes * 60000 - Date.now(), answered = Object.keys(cur.mc).length;
+    const mm = Math.max(0, Math.floor(left / 60000)), ss = Math.max(0, Math.floor(left / 1000) % 60);
+    clock.textContent = left > 0 ? `${mm}:${pad(ss)} left · ${answered} of ${p.mc.length} answered` : `Time is up · ${answered} of ${p.mc.length} answered · submit when ready`;
+    clock.classList.toggle('late', left <= 0);
+  }
+  tick(); examTimer = setInterval(() => { if (!document.getElementById('xclock')) return clearInterval(examTimer); tick(); }, 1000);
+  document.getElementById('xsub').onclick = () => {
+    const blank = p.mc.length - Object.keys(cur.mc).length, n = document.getElementById('xnote'), b = document.getElementById('xsub');
+    if (blank && !b.dataset.sure) { b.dataset.sure = 1; b.textContent = 'Submit anyway'; n.textContent = `${blank} multiple-choice question${blank > 1 ? 's are' : ' is'} unanswered. Unanswered questions score zero.`; return; }
+    clearInterval(examTimer);
+    const c = store.get(K, cur); c.submitted = Date.now();
+    p.mc.forEach((q, i) => record(q.c, c.mc[i] === q.a));
+    store.set(K, c); examView(x.id);
+  };
+  document.getElementById('xquit').onclick = e => { if (!e.target.dataset.sure) { e.target.dataset.sure = 1; e.target.textContent = 'Tap again to abandon'; return; } clearInterval(examTimer); store.set(K, null); examView(x.id); };
+}
+function examMark(x, cur){
+  const K = 'examcur-' + x.id, p = cur.paper;
+  const right = p.mc.filter((q, i) => cur.mc[i] === q.a).length, mcPct = Math.round(right / p.mc.length * 100);
+  const items = p.short.map((q, i) => Object.assign({k: 's' + i, label: 'B' + (i + 1), sec: 'short'}, q)).concat(p.case ? p.case.parts.map((q, i) => Object.assign({k: 'c' + i, label: 'C' + (i + 1), sec: 'case'}, q)) : []);
+  const marks = cur.marks || {};
+  const missed = [...new Set(p.mc.filter((q, i) => cur.mc[i] !== q.a && q.c && CONCEPTS[q.c]).map(q => q.c))];
+  app.innerHTML = `
+    <div class="lesson-head"><span class="eyebrow">${EXAM_KIND[x.kind]} · marking</span><a class="back" href="#exams">← All exams</a><h1>${esc(x.title)}</h1></div>
+    <div class="stats"><div><b>${mcPct}%</b><span>multiple choice (${right}/${p.mc.length})</span></div><div><b id="wpct">–</b><span>written</span></div><div><b id="tot">–</b><span>total</span></div></div>
+    ${missed.length ? `<section class="helpbox"><span class="eyebrow">Review before your next attempt</span><h3>Concepts you missed</h3><div class="chips">${missed.map(id => `<a class="chip s-struggling" href="#c-${id}">${esc(CONCEPTS[id].name)} →</a>`).join('')}</div></section>` : ''}
+    <h2>Mark your written answers</h2><p class="lede">Compare each answer with the model answer and give yourself the marks it deserves. Be strict: full marks only if you covered the key points. Or copy everything to Claude for marking.</p>
+    ${items.map(q => `<div class="q"><span class="qn">${q.label} · ${q.marks} marks</span><p class="qt">${esc(q.q)}</p><div class="panel"><b>Your answer</b><p>${esc(cur.w[q.k] || '(no answer)')}</p></div><details open><summary>Model answer</summary><div class="model">${esc(q.a)}</div></details>
+      <label class="note">Your mark <select data-k="${q.k}">${['', ...Array.from({length: q.marks + 1}, (_, i) => i)].map(v => `<option value="${v}" ${String(marks[q.k]) === String(v) && v !== '' ? 'selected' : ''}>${v === '' ? 'choose' : v + ' / ' + q.marks}</option>`).join('')}</select></label></div>`).join('')}
+    <h2>Multiple-choice answers</h2><details><summary>Show all ${p.mc.length} questions with answers</summary><div id="xrev"></div></details>
+    <p class="seg" style="margin-top:24px"><button class="primary" id="xsave">Save result</button><button id="xcopy">Copy for Claude to mark</button></p><p class="note" id="xnote"></p>`;
+  const rev = document.getElementById('xrev');
+  p.mc.forEach((q, i) => { const el = document.createElement('div'); rev.appendChild(el); renderQ(el, q, 'A' + (i + 1), null, {picked: cur.mc[i] === undefined ? -1 : cur.mc[i], noHelp: false}); });
+  const calc = () => {
+    const sec = s => items.filter(q => q.sec === s), got = s => sec(s).reduce((t, q) => t + (+marks[q.k] || 0), 0), max = s => sec(s).reduce((t, q) => t + q.marks, 0);
+    const all = items.every(q => marks[q.k] !== undefined && marks[q.k] !== '');
+    const sp = max('short') ? got('short') / max('short') : 0, cp = max('case') ? got('case') / max('case') : sp;
+    const wp = Math.round((sp * 30 + cp * 30) / 60 * 100), total = Math.round(mcPct * .4 + sp * 30 + cp * 30);
+    document.getElementById('wpct').textContent = all ? wp + '%' : '–'; document.getElementById('tot').textContent = all ? total + '%' : '–';
+    return all ? {wp, total} : null;
+  };
+  app.querySelectorAll('select[data-k]').forEach(sl => sl.onchange = () => { marks[sl.dataset.k] = sl.value === '' ? undefined : +sl.value; const c = store.get(K, cur); c.marks = marks; store.set(K, c); calc(); });
+  calc();
+  document.getElementById('xsave').onclick = () => {
+    const r = calc(), n = document.getElementById('xnote');
+    const att = store.get('exam-' + x.id, []);
+    att.push({date: todayKey(), mc: mcPct, written: r ? r.wp : null, total: r ? r.total : null, early: !!cur.early});
+    store.set('exam-' + x.id, att); store.set(K, null); logActivity();
+    app.innerHTML = `<div class="lesson-head"><span class="eyebrow">${EXAM_KIND[x.kind]}</span><a class="back" href="#exams">← All exams</a><h1>${esc(x.title)}</h1></div>
+      <section class="panel result"><h2>${r ? (r.total >= 85 ? `Distinction: ${r.total}%` : r.total >= 70 ? `Passed: ${r.total}%` : `${r.total}%: not yet a pass`) : `Multiple choice ${mcPct}%`}</h2>
+      <p>${!r ? 'Your written answers are not marked yet, so this attempt has no total. Paste them to Claude to have them marked.' : r.total >= 70 ? 'Well done. What you got wrong comes back in your spaced review, so it sticks.' : 'Work through the concepts flagged below, redo the weekly quizzes for the weak weeks, then sit a fresh paper in a day or two.'}</p>
+      ${missed.length ? `<div class="chips">${missed.map(id => `<a class="chip s-struggling" href="#c-${id}">${esc(CONCEPTS[id].name)}</a>`).join('')}</div>` : ''}
+      <p><a class="btn" href="#exams">Back to exams</a></p></section>`;
+  };
+  document.getElementById('xcopy').onclick = () => {
+    const txt = `${x.title}. Multiple choice: ${right}/${p.mc.length} (${mcPct}%).${missed.length ? ' Missed concepts: ' + missed.map(id => CONCEPTS[id].name).join(', ') + '.' : ''}\n\n` + items.map(q => `${q.label} (${q.marks} marks). ${q.q}\nMy answer: ${cur.w[q.k] || '(no answer)'}`).join('\n\n');
+    copyText(txt, document.getElementById('xnote'), 'Copied. Paste it into the project thread and Claude will mark it.');
+  };
+}
+function nextExamDue(){
+  return examList().find(x => { const s = examState(x); return s.ready && !s.passed; });
 }
 
 /* ---------- tools ---------- */
@@ -501,21 +740,24 @@ function glossaryView(){
 function route(){
   const h = decodeURIComponent((location.hash || '#home').slice(1));
   let m;
-  const tab = /^(w\d+d\d+|week\d+|quiz\d*|home)$/.test(h) || h === '' ? 'home' : /^c-/.test(h) ? 'practice' : /^tool-/.test(h) ? 'tools' : h;
+  const tab = /^(w\d+d\d+|week\d+|quiz\d*|home)$/.test(h) || h === '' ? 'home' : /^c-/.test(h) ? 'practice' : /^tool-/.test(h) ? 'tools' : /^exam/.test(h) ? 'plan' : h;
   document.querySelectorAll('.mainnav a').forEach(a => { if (a.dataset.v === tab) a.setAttribute('aria-current', 'page'); else a.removeAttribute('aria-current'); });
   if ((m = h.match(/^w(\d+)d(\d+)$/))) lesson(+m[1], +m[2]);
   else if ((m = h.match(/^week(\d+)$/))) weekView(+m[1]);
   else if ((m = h.match(/^quiz(\d*)$/))) quiz(m[1] ? +m[1] : latest().week);
   else if ((m = h.match(/^c-(.+)$/))) conceptView(m[1]);
   else if (/^tool-/.test(h)) { toolsView(); const el = document.getElementById(h); if (el) { setTimeout(() => el.scrollIntoView(), 0); return; } }
-  else if (h === 'plan' || h === 'map' || h === 'exams') planView();
+  else if ((m = h.match(/^exam-(.+)$/))) examView(m[1]);
+  else if (h === 'exams') examsView();
+  else if (h === 'extras') extrasView();
+  else if (h === 'plan' || h === 'map') planView();
   else if (h === 'practice') practice();
   else if (h === 'tools') toolsView();
   else if (h === 'glossary') glossaryView();
   else today();
   window.scrollTo(0, 0);
 }
-window.addEventListener('hashchange', route);
+window.addEventListener('hashchange', () => { clearInterval(examTimer); route(); });
 route();
 cloudInit();
 
