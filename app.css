@@ -106,7 +106,7 @@ textarea{width:100%;min-height:120px;font:15px/1.5 var(--body);padding:10px;bord
 .mainnav a{display:flex;align-items:center;gap:6px}
 .mainnav svg{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
 @media (max-width:720px){
-  .mainnav{position:fixed;left:0;right:0;bottom:0;z-index:10;background:var(--card);border-top:1px solid var(--rule);display:grid;grid-template-columns:repeat(6,1fr);gap:0;padding:4px 4px calc(4px + env(safe-area-inset-bottom,0px))}
+  .mainnav{position:fixed;left:0;right:0;bottom:0;z-index:10;background:var(--card);border-top:1px solid var(--rule);display:grid;grid-template-columns:repeat(7,1fr);gap:0;padding:4px 4px calc(4px + env(safe-area-inset-bottom,0px))}
   .mainnav a{flex-direction:column;gap:2px;font-size:11px;padding:6px 2px;border-radius:8px;text-align:center}
   .mainnav svg{width:22px;height:22px}
   .wrap#app{padding-bottom:110px}
@@ -203,3 +203,16 @@ input[type=date],input[type=number],input[type=search],select{font:16px var(--bo
 .score.late{color:var(--bad)}
 .month .body.bites{padding-left:0;font-size:inherit}
 .month .body .bite{margin:10px 0}
+
+/* save-state chip and Ask Claude */
+.savechip{display:inline-block;font-size:12px;line-height:1.2;padding:4px 10px;border-radius:999px;border:1px solid var(--rule);text-decoration:none;white-space:nowrap;margin-left:auto}
+.savechip.ok{color:var(--muted)}
+.savechip.bad{color:#b3261e;border-color:#b3261e;font-weight:600}
+.answer{white-space:pre-wrap;background:var(--card);border:1px solid var(--rule);border-radius:10px;padding:14px 16px;margin:10px 0;line-height:1.55}
+.qa{border-bottom:1px solid var(--rule);padding:10px 0}.qa summary{cursor:pointer;font-weight:600}
+.askctx{display:flex;gap:8px;align-items:flex-start;margin:6px 0 10px}
+#askq{min-height:110px}
+.asklink{margin:10px 0 0}.asklink a{font-weight:600}
+@media (max-width:720px){.mainnav a{font-size:10px}.savechip{font-size:11px;padding:3px 8px}}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]) .savechip.bad{color:#f2b8b5;border-color:#f2b8b5}}
+:root[data-theme="dark"] .savechip.bad{color:#f2b8b5;border-color:#f2b8b5}

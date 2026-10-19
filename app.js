@@ -3,46 +3,71 @@ const C = window.CURRICULUM, P = window.PRACTICE || {};
 const WEEKS = (window.WEEKS || []).sort((a, b) => (a.month - b.month) || (a.week - b.week));
 const app = document.getElementById('app');
 const DAY = 86400000;
-/* Progress lives in memory, is mirrored to this browser's localStorage, and, inside the claude.ai
-   Artifact, is also saved to the viewer's private cloud record so it survives the browser forgetting it
-   and follows them between devices. */
+/* Progress lives in memory and is mirrored to this browser's localStorage when the browser allows it.
+   Inside the claude.ai Artifact it is also saved to the course's database (collection "progress", one
+   document per viewer id) so it survives the browser forgetting it, follows the viewer between devices,
+   and can be read back by Claude to confirm saves landed. A chip in the header always shows which applies. */
 const MEM = {};
-try { for (let i = 0; i < localStorage.length; i++) { const k = localStorage.key(i); if (k.startsWith('bfa:')) MEM[k] = localStorage.getItem(k); } } catch (e) {}
-const cloud = {doc: null, timer: null, state: 'off'};
+const LS_OK = (() => { try { localStorage.setItem('bfa:_probe', '1'); const ok = localStorage.getItem('bfa:_probe') === '1'; localStorage.removeItem('bfa:_probe'); return ok; } catch (e) { return false; } })();
+if (LS_OK) { try { for (let i = 0; i < localStorage.length; i++) { const k = localStorage.key(i); if (k.startsWith('bfa:')) MEM[k] = localStorage.getItem(k); } } catch (e) {} }
+const IN_CLAUDE = !!(window.claude && window.claude.use);
+const ARTIFACT_URL = 'https://claude.ai/artifact/VTpuB4VXYwYqdsqkd4nWHn';
+const cloud = {db: null, doc: null, id: null, timer: null, state: IN_CLAUDE ? 'connecting' : 'off', savedAt: 0, why: ''};
 const store = {
   get(k, d){ const v = MEM['bfa:' + k]; try { return v ? JSON.parse(v) : d } catch (e) { return d } },
   set(k, v){ MEM['bfa:' + k] = JSON.stringify(v); MEM['bfa:_t'] = String(Date.now());
-    try { localStorage.setItem('bfa:' + k, MEM['bfa:' + k]); localStorage.setItem('bfa:_t', MEM['bfa:_t']); } catch (e) {}
-    cloudSave(); },
+    if (LS_OK) { try { localStorage.setItem('bfa:' + k, MEM['bfa:' + k]); localStorage.setItem('bfa:_t', MEM['bfa:_t']); } catch (e) {} }
+    cloudSave(); showSave(); },
   all(){ return Object.assign({}, MEM) },
-  load(all){ Object.keys(all).forEach(k => { if (k.startsWith('bfa:')) { MEM[k] = all[k]; try { localStorage.setItem(k, all[k]) } catch (e) {} } }); }
+  load(all){ Object.keys(all).forEach(k => { if (k.startsWith('bfa:')) { MEM[k] = all[k]; if (LS_OK) { try { localStorage.setItem(k, all[k]) } catch (e) {} } } }); }
 };
+function viewInfo(){ let framed = true; try { framed = window.top !== window.self; } catch (e) {} return {framed, ls: LS_OK, w: window.innerWidth, ua: navigator.userAgent.slice(0, 120)}; }
 function cloudSave(){
   if (!cloud.doc) return;
   clearTimeout(cloud.timer);
-  cloud.timer = setTimeout(() => { cloud.doc.set({t: +MEM['bfa:_t'] || Date.now(), data: JSON.stringify(MEM)}).then(() => setCloud('on'), () => setCloud('err')); }, 800);
+  cloud.state = 'saving'; showSave();
+  cloud.timer = setTimeout(() => {
+    cloud.doc.set({t: +MEM['bfa:_t'] || Date.now(), data: JSON.stringify(MEM), view: viewInfo()})
+      .then(() => { cloud.state = 'on'; cloud.savedAt = Date.now(); showSave(); },
+            e => { cloud.state = 'err'; cloud.why = (e && e.code) || 'error'; showSave(); });
+  }, 800);
 }
-function setCloud(s){ cloud.state = s; const el = document.getElementById('syncnote'); if (el) el.textContent = syncText(); }
-function syncText(){
-  return cloud.state === 'on' ? 'Your progress is saved to your Claude account and follows you to any device where you open this course on claude.ai.'
-    : cloud.state === 'err' ? 'Saving to your Claude account failed just now. Progress is still kept in this browser; it will retry on your next answer.'
-    : 'Progress is saved in this browser on this device. Each copy of the course (the claude.ai version, the web app, the offline file) and each browser keeps its own.';
+/* where progress is going right now, in plain words */
+function saveState(){
+  const s = cloud.state;
+  if (s === 'on') return {ok: true, short: 'Saved to your account', long: 'Your progress is saved to your Claude account. It will be here next time, on any device where you open this course on claude.ai.'};
+  if (s === 'saving') return {ok: true, short: 'Saving…', long: 'Saving your progress to your Claude account…'};
+  if (s === 'connecting') return {ok: true, short: 'Connecting…', long: 'Connecting to your Claude account to load your progress…'};
+  if (s === 'err') return {ok: false, short: 'Not saved: tap for help', long: `Saving to your Claude account failed (${cloud.why}). ${LS_OK ? 'Your progress is still kept in this browser for now.' : 'This view cannot keep progress in the browser either, so copy your progress code below before closing.'} Try reloading the page.`};
+  if (s === 'nocloud') return {ok: LS_OK, short: LS_OK ? 'Saved in this browser only' : 'Not saved here: tap for help', long: `This view of the course could not reach your Claude account (${cloud.why}). ${LS_OK ? 'Progress is saved in this browser only.' : 'This browser view also blocks storage, so progress will be lost when you close it.'} Open the course from claude.ai (${ARTIFACT_URL}) while signed in, and allow storage if asked.`};
+  return LS_OK ? {ok: true, short: 'Saved on this device', long: 'Progress is saved in this browser on this device. Each copy of the course (the claude.ai version, the web app, the offline file) and each browser keeps its own. For one record that follows you everywhere, use the claude.ai version: ' + ARTIFACT_URL}
+    : {ok: false, short: 'Not saved: tap for help', long: 'This browser is blocking storage (private browsing, or site data turned off), so progress will be lost when you close it. Use the claude.ai version for saving that follows you: ' + ARTIFACT_URL};
 }
+function showSave(){
+  const st = saveState(); let chip = document.getElementById('savechip');
+  if (!chip) { const wrap = document.querySelector('header.bar .wrap'); if (!wrap) return; chip = document.createElement('a'); chip.id = 'savechip'; chip.href = '#plan'; chip.setAttribute('aria-live', 'polite'); wrap.appendChild(chip); }
+  chip.className = 'savechip ' + (st.ok ? 'ok' : 'bad'); chip.textContent = (st.ok ? '● ' : '▲ ') + st.short;
+  const el = document.getElementById('syncnote'); if (el) el.textContent = st.long;
+}
+function syncText(){ return saveState().long; }
 async function cloudInit(){
+  showSave();
+  if (!IN_CLAUDE) return;
   try {
-    if (!window.claude || !window.claude.use) return;
     const [db, user] = await Promise.all([claude.use('db'), claude.use('user')]);
-    if (!db || !user) return;
-    const id = await user.id(); if (!id) return;
-    const doc = db.collection('data/users/' + id).doc('progress');
-    const snap = await doc.get();
-    const remote = snap.exists ? snap.data() : null;
+    if (!db || !user) { cloud.state = 'nocloud'; cloud.why = !db && !user ? 'no account access in this view' : !db ? 'no database in this view' : 'no sign-in in this view'; return showSave(); }
+    const id = await user.id();
+    if (!id) { cloud.state = 'nocloud'; cloud.why = 'not signed in'; return showSave(); }
+    cloud.db = db; cloud.id = id;
+    const doc = db.collection('progress').doc(id);
+    let snap = await doc.get(), remote = snap.exists ? snap.data() : null;
+    if (!remote) { const old = await db.collection('data/users/' + id).doc('progress').get().catch(() => null); if (old && old.exists) remote = old.data(); }
     const localT = +MEM['bfa:_t'] || 0;
     cloud.doc = doc;
-    if (remote && remote.data && (+remote.t || 0) > localT) { store.load(JSON.parse(remote.data)); route(); }
-    else if (Object.keys(MEM).length) cloudSave();
-    setCloud('on');
-  } catch (e) { setCloud('err'); }
+    if (remote && remote.data && (+remote.t || 0) > localT) { store.load(JSON.parse(remote.data)); cloud.state = 'on'; cloud.savedAt = +remote.t; showSave(); route(); }
+    else cloudSave();
+    askInit();
+  } catch (e) { cloud.state = 'err'; cloud.why = (e && e.code) || (e && e.message) || 'error'; showSave(); }
 }
 const esc = s => String(s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const pad = n => String(n).padStart(2, '0');
@@ -221,6 +246,7 @@ function lesson(wn, n, i, keep){
   if (i == null) i = pos[key] || 0;
   cur = {w: wn, day: n, i: Math.max(0, Math.min(i, d.slides.length - 1))};
   const s = d.slides[cur.i], last = cur.i === d.slides.length - 1;
+  CTX = {w, label: `Week ${w.week}, Day ${d.n}: ${d.title} (slide ${cur.i + 1}, "${s.h}")`, text: `Lesson: ${d.title}\nCurrent slide: ${s.h}\n${plain(s.b)}\n\nOther slides in this lesson: ${d.slides.map(x => x.h).join('; ')}`};
   if (pos[key] !== cur.i) { pos[key] = cur.i; store.set('pos', pos); }
   if (last) markDone(key);
   const audioEl = document.getElementById('aud');
@@ -229,7 +255,7 @@ function lesson(wn, n, i, keep){
       <div class="lesson-head"><span class="eyebrow">Week ${w.week} · Day ${d.n}</span><a href="#week${w.week}" class="back">← All lessons</a><h1>${esc(d.title)}</h1></div>
       <audio id="aud" data-key="${key}" controls preload="none" src="${audioSrc(d.audio)}"></audio>
       <p class="note" id="audnote" style="margin:0">Audio lecture. Listen alongside the slides, or on its own on the go.</p>
-      <div id="slidebox"></div><div id="checkbox"></div>`;
+      <div id="slidebox"></div>${askLink()}<div id="checkbox"></div>`;
     document.getElementById('aud').addEventListener('error', () => { document.getElementById('audnote').textContent = 'This audio lecture is not available yet. Check back shortly.'; });
   }
   const sy = window.scrollY;
@@ -273,13 +299,14 @@ function conceptView(id){
   const c = CONCEPTS[id]; if (!c) return practice();
   const w = findWeek(c.week); setBrand(w);
   const s = status(id), m = mastery()[id];
+  CTX = {w, label: `Concept: ${c.name}`, text: `Concept: ${c.name}\n${plain(c.explain)}\nWorked example:\n${plain(c.example)}`};
   app.innerHTML = `
     <div class="lesson-head"><span class="eyebrow">Concept · Week ${c.week} · Day ${c.day}</span><a class="back" href="#practice">← All concepts</a><h1>${esc(c.name)}</h1></div>
     <div class="mrow">${meter(id)}<span class="pill s-${s}">${STATUS_LABEL[s]}</span>${m ? `<span class="note">${m.hist.filter(x => x).length} of last ${m.hist.length} correct</span>` : ''}</div>
     <div class="tabs" role="tablist"><button role="tab" aria-selected="true" data-t="explain">Another way to see it</button><button role="tab" data-t="example">Worked example</button></div>
     <section class="slide" id="cpanel">${wrapTables(c.explain)}</section>
     <p class="note">Want the original lesson? <a href="#w${pad(c.week)}d${c.day}">Week ${c.week}, Day ${c.day} slides →</a></p>
-    <h2>Practise</h2><p class="lede">Fresh questions every time${(c.gens || []).length ? ', with new numbers' : ''}. Keep going until this shows as Strong.</p><div id="cprac"></div>`;
+    ${askLink()}<h2>Practise</h2><p class="lede">Fresh questions every time${(c.gens || []).length ? ', with new numbers' : ''}. Keep going until this shows as Strong.</p><div id="cprac"></div>`;
   app.querySelectorAll('.tabs button').forEach(b => b.onclick = () => {
     app.querySelectorAll('.tabs button').forEach(x => x.setAttribute('aria-selected', x === b));
     document.getElementById('cpanel').innerHTML = wrapTables(b.dataset.t === 'explain' ? c.explain : c.example);
@@ -309,6 +336,7 @@ function quiz(wn){
   const K = 'quiz-' + wid(w), KW = 'quizw-' + wid(w);
   const score = () => { const a = store.get(K, {}); const k = Object.keys(a); return `${k.filter(i => a[i] === w.quiz.mc[i].a).length} correct of ${k.length} answered · ${w.quiz.mc.length} questions`; };
   const drafts = store.get(KW, {});
+  CTX = {w, label: `Week ${w.week} quiz`, text: `Week ${w.week} quiz on ${w.title}. Topics: ${w.days.map(d => d.title).join('; ')}`};
   app.innerHTML = `
     <p class="eyebrow" style="margin-top:28px">Month ${w.month} · Week ${w.week}</p><h1>Week ${w.week} quiz</h1>
     <p class="lede">Part A: ${w.quiz.mc.length} multiple-choice questions, marked as you go. Part B: ${w.quiz.written.length} written questions. Write your answer, then compare it with the model answer. Aim for 80% on Part A before moving on.</p>
@@ -317,9 +345,10 @@ function quiz(wn){
     <h2>Part B · Written</h2>
     ${w.quiz.written.map((q, i) => `<div class="q"><span class="qn">B${i + 1}</span><p class="qt">${esc(q.q)}</p>
       <label class="note" for="w${i}">Your answer (saved on this device)</label><textarea id="w${i}" data-i="${i}">${esc(drafts[i] || '')}</textarea>
+      ${IN_CLAUDE ? `<p class="seg" style="margin-top:8px"><button class="fb" data-i="${i}">Mark my answer</button></p><div class="answer" id="fb${i}" hidden></div>` : ''}
       <details style="margin-top:8px"><summary>Show model answer</summary><div class="model">${esc(q.a)}</div></details></div>`).join('')}
     <p class="seg" style="margin-top:24px"><button id="copyw">Copy my answers for marking</button><button id="reset">Clear my answers</button></p>
-    <p class="note" id="copynote">Paste your copied answers into the project thread and Claude will mark them and adjust your course.</p>`;
+    <p class="note" id="copynote">${IN_CLAUDE ? 'Tap Mark my answer under each written question for instant marking.' : 'Paste your copied answers into the project thread and Claude will mark them and adjust your course.'}</p>`;
   const ans = store.get(K, {}), mcq = document.getElementById('mcq');
   w.quiz.mc.forEach((q, i) => {
     const el = document.createElement('div'); mcq.appendChild(el);
@@ -327,6 +356,16 @@ function quiz(wn){
   });
   app.querySelectorAll('textarea').forEach(t => t.oninput = () => { const d = store.get(KW, {}); d[t.dataset.i] = t.value; store.set(KW, d); });
   document.getElementById('reset').onclick = () => { store.set(K, {}); store.set(KW, {}); quiz(wn); };
+  app.querySelectorAll('button.fb').forEach(b => b.onclick = () => {
+    const i = +b.dataset.i, mine = (document.getElementById('w' + i).value || '').trim(), out = document.getElementById('fb' + i);
+    out.hidden = false;
+    if (!mine) { out.textContent = 'Write your answer in the box first, then tap Mark my answer.'; return; }
+    if (!ask.ready) { out.textContent = 'Still connecting to Claude. Try again in a moment.'; return; }
+    const fbs = store.get('fb-' + wid(w), {});
+    askClaude(`${TUTOR}\n\nMark Mitch's answer to this Week ${w.week} quiz question out of 5, like a fair but encouraging lecturer. Start with "Mark: N/5". Then say in a few short lines what he got right, what is missing or wrong (fix any calculation), and one tip to improve. Under 200 words.\n\nQuestion:\n${w.quiz.written[i].q}\n\nModel answer (for you, the marker):\n${w.quiz.written[i].a}\n\nMitch's answer:\n${mine}`, out,
+      text => { fbs[i] = {t: Date.now(), text}; store.set('fb-' + wid(w), fbs); const m = text.match(/Mark:\s*(\d)/); if (m) { const sc = store.get('wscore', {}); sc[wid(w) + 'B' + (i + 1)] = +m[1]; store.set('wscore', sc); } });
+  });
+  { const fbs = store.get('fb-' + wid(w), {}); Object.keys(fbs).forEach(i => { const o = document.getElementById('fb' + i); if (o) { o.hidden = false; o.textContent = fbs[i].text; } }); }
   document.getElementById('copyw').onclick = () => {
     const d = store.get(KW, {}), a = store.get(K, {});
     const mc = Object.keys(a).filter(i => a[i] === w.quiz.mc[i].a).length;
@@ -736,6 +775,72 @@ function glossaryView(){
   document.getElementById('gq').oninput = e => draw(e.target.value); draw('');
 }
 
+/* ---------- ask Claude (claude.ai version only, through the `sample` capability) ---------- */
+let CTX = null; // what Mitch is looking at, sent with each question because Claude has no memory between asks
+const ask = {fn: null, ready: false, list: []};
+const plain = html => String(html || '').replace(/<\/(p|li|tr|dd|dt|h\d)>/g, '\n').replace(/<[^>]+>/g, ' ').replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/[ \t]+/g, ' ').replace(/\n\s*/g, '\n').trim();
+const TUTOR = `You are a friendly, expert university finance lecturer tutoring Mitch, an adult learner in Australia working through a self-paced business and finance course aligned to the UNSW Master of Applied Finance. Use Australian terms, rules and examples throughout: AASB accounting standards, ATO tax rules, ASIC and the Corporations Act, API and IVS valuation standards, Australian dollars and GST. Where a figure depends on current rates or thresholds, give it as general information and say where to check it (ATO, ASIC, RBA). This is education, not personal financial advice: if he asks what he personally should do, explain the considerations instead. Write plain text: short paragraphs, simple "- " bullet lists when useful, and show your working for any numbers. No headings, no tables, no markdown symbols like ** or #.`;
+async function askInit(){
+  try { const f = await claude.use('sample'); if (f) { ask.fn = f; ask.ready = true; } } catch (e) {}
+  if (cloud.db) { try { const q = await cloud.db.collection('questions').orderBy('t', 'desc').limit(100).get(); ask.list = q.docs.map(d => d.data()).filter(x => x && x.uid === cloud.id); } catch (e) {} }
+  if (location.hash === '#ask') askView();
+}
+function askErr(e){
+  const c = e && e.code;
+  return c === 'not_granted' ? 'Asking Claude is switched off for this page. Open the page menu, choose Permissions, and allow it.'
+    : c === 'rate_limited' ? 'Too many questions in a short time. Wait a minute and ask again.'
+    : c === 'cancelled' ? 'Stopped.'
+    : 'Claude could not answer just now. Please try again.';
+}
+async function askClaude(prompt, out, onDone){
+  const ctl = new AbortController();
+  out.textContent = 'Thinking…';
+  try { const r = await ask.fn(prompt, {cache: false, signal: ctl.signal, onText: ({text}) => { out.textContent = text; }}); out.textContent = r.text; onDone && onDone(r.text); }
+  catch (e) { out.textContent = (e && e.text ? e.text + '\n\n' : '') + askErr(e); }
+  return ctl;
+}
+function askView(){
+  setBrand(CTX && CTX.w ? CTX.w : latest());
+  if (!IN_CLAUDE) {
+    app.innerHTML = `<p class="eyebrow" style="margin-top:28px">Ask Claude</p><h1>Ask a question</h1>
+      <p class="lede">Asking Claude works in the claude.ai version of the course, where Claude can answer you right here and keep your questions for later.</p>
+      <p><a class="btn" href="${ARTIFACT_URL}" target="_blank" rel="noopener">Open the claude.ai version</a></p>`;
+    return;
+  }
+  app.innerHTML = `<p class="eyebrow" style="margin-top:28px">Ask Claude</p><h1>Ask a question</h1>
+    <p class="lede">Ask anything about the course, a term, a calculation or a real offer you are looking at. Answers use Australian rules and examples.</p>
+    ${CTX ? `<label class="note askctx"><input type="checkbox" id="usectx" checked> About what I was just looking at: <b>${esc(CTX.label)}</b></label>` : ''}
+    <textarea id="askq" placeholder="e.g. Why does dividing by 1.1 take GST out, but taking 10% off doesn't?"></textarea>
+    <p class="seg"><button class="primary" id="askgo">Ask</button><button id="askstop" hidden>Stop</button></p>
+    <p class="note" id="asknote">${ask.ready ? 'The first time you ask, a box will pop up asking you to allow this page to use Claude. Choose Allow.' : 'Connecting to Claude…'}</p>
+    <div class="answer" id="askout" hidden></div>
+    <h2>Your questions</h2><div id="asklist"></div>`;
+  const drawList = () => { document.getElementById('asklist').innerHTML = ask.list.length ? ask.list.map((x, i) => `<details class="qa"><summary>${esc(x.q)}<span class="note"> · ${new Date(x.t).toLocaleDateString('en-AU', {day: 'numeric', month: 'short'})}${x.about ? ' · ' + esc(x.about) : ''}</span></summary><div class="answer">${esc(x.a)}</div></details>`).join('') : `<p class="note">${cloud.db ? 'Questions you ask are kept here.' : 'Questions you ask appear here while this page is open.'}</p>`; };
+  drawList();
+  const go = document.getElementById('askgo'), stop = document.getElementById('askstop'), out = document.getElementById('askout'), q = document.getElementById('askq'), note = document.getElementById('asknote');
+  go.disabled = !ask.ready;
+  let ctl = null;
+  go.onclick = async () => {
+    const text = q.value.trim(); if (!text) { q.focus(); return; }
+    const useCtx = CTX && document.getElementById('usectx') && document.getElementById('usectx').checked;
+    const prompt = `${TUTOR}\n\n${useCtx ? `What Mitch is studying right now (${CTX.label}):\n${CTX.text.slice(0, 2500)}\n\n` : ''}Mitch's question:\n${text}\n\nAnswer in about 250 words or fewer unless he asks for more detail.`;
+    out.hidden = false; go.disabled = true; stop.hidden = false; note.textContent = '';
+    ctl = new AbortController(); stop.onclick = () => ctl.abort();
+    out.textContent = 'Thinking…';
+    try {
+      const r = await ask.fn(prompt, {cache: false, signal: ctl.signal, onText: ({text: t}) => { out.textContent = t; }});
+      out.textContent = r.text;
+      const row = {q: text, a: r.text, t: Date.now(), about: useCtx ? CTX.label : '', uid: cloud.id || ''};
+      ask.list.unshift(row); drawList(); q.value = '';
+      if (cloud.db) cloud.db.collection('questions').add(row).catch(() => { note.textContent = 'Answered, but it could not be kept in your question list.'; });
+      go.disabled = false;
+    } catch (e) { out.textContent = (e && e.text ? e.text + '\n\n' : '') + askErr(e); go.disabled = !!(e && e.code === 'not_granted'); }
+    stop.hidden = true;
+  };
+}
+/* a small "Ask about this" link for lessons, concepts and quizzes */
+const askLink = () => IN_CLAUDE ? `<p class="asklink"><a href="#ask">💬 Ask Claude about this</a></p>` : '';
+
 /* ---------- routing ---------- */
 function route(){
   const h = decodeURIComponent((location.hash || '#home').slice(1));
@@ -754,6 +859,7 @@ function route(){
   else if (h === 'practice') practice();
   else if (h === 'tools') toolsView();
   else if (h === 'glossary') glossaryView();
+  else if (h === 'ask') askView();
   else today();
   window.scrollTo(0, 0);
 }
