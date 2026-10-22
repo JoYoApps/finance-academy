@@ -50,6 +50,31 @@ function showSave(){
   const el = document.getElementById('syncnote'); if (el) el.textContent = st.long;
 }
 function syncText(){ return saveState().long; }
+/* Merge two saved progress maps key by key so no device can wipe another's progress.
+   Lists such as lessons done and quiz answers are unioned; on a clash the more recent entry wins. */
+function mergeProgress(local, remote, remoteNewer){
+  const out = Object.assign({}, local);
+  const parse = v => { try { return JSON.parse(v) } catch (e) { return v } };
+  const isObj = x => x && typeof x === 'object' && !Array.isArray(x);
+  Object.keys(remote).forEach(k => {
+    if (!k.startsWith('bfa:')) return;
+    if (!(k in local)) { out[k] = remote[k]; return; }
+    if (k === 'bfa:_t') { out[k] = String(Math.max(+local[k] || 0, +remote[k] || 0)); return; }
+    const a = parse(local[k]), b = parse(remote[k]);
+    if (isObj(a) && isObj(b)) {
+      const m = Object.assign({}, remoteNewer ? a : b, remoteNewer ? b : a);
+      Object.keys(a).forEach(x => { if (!(x in b)) m[x] = a[x]; });
+      Object.keys(b).forEach(x => {
+        if (!(x in a)) { m[x] = b[x]; return; }
+        const p = a[x], q = b[x];
+        if (isObj(p) && isObj(q) && (p.last || q.last)) m[x] = (+q.last || 0) >= (+p.last || 0) ? q : p;   // mastery: latest answer wins
+        else if (typeof p === 'number' && typeof q === 'number' && k === 'bfa:activity') m[x] = Math.max(p, q);
+      });
+      out[k] = JSON.stringify(m);
+    } else out[k] = remoteNewer ? remote[k] : local[k];
+  });
+  return out;
+}
 async function cloudInit(){
   showSave();
   if (!IN_CLAUDE) return;
@@ -62,10 +87,15 @@ async function cloudInit(){
     const doc = db.collection('progress').doc(id);
     let snap = await doc.get(), remote = snap.exists ? snap.data() : null;
     if (!remote) { const old = await db.collection('data/users/' + id).doc('progress').get().catch(() => null); if (old && old.exists) remote = old.data(); }
-    const localT = +MEM['bfa:_t'] || 0;
     cloud.doc = doc;
-    if (remote && remote.data && (+remote.t || 0) > localT) { store.load(JSON.parse(remote.data)); cloud.state = 'on'; cloud.savedAt = +remote.t; showSave(); route(); }
-    else cloudSave();
+    if (remote && remote.data) {
+      // keep a dated copy of what the account held before this device touches it, then merge, never replace
+      db.collection('backups').doc(id + '_' + todayKey().replace(/-/g, '')).set({t: Date.now(), from: remote.t || 0, data: remote.data}).catch(() => {});
+      const before = JSON.stringify(MEM);
+      store.load(mergeProgress(MEM, JSON.parse(remote.data), (+remote.t || 0) > (+MEM['bfa:_t'] || 0)));
+      if (JSON.stringify(MEM) !== before) route();
+    }
+    cloudSave();
     askInit();
   } catch (e) { cloud.state = 'err'; cloud.why = (e && e.code) || (e && e.message) || 'error'; showSave(); }
 }
@@ -437,7 +467,7 @@ function planView(){
   document.getElementById('impgo').onclick = () => {
     const note = document.getElementById('bnote');
     try { const raw = document.getElementById('impcode').value.trim().replace(/^BFA1:/, ''); const all = JSON.parse(decodeURIComponent(escape(atob(raw))));
-      store.load(all); store.set('imported', todayKey()); note.textContent = 'Progress loaded.'; setTimeout(planView, 600);
+      store.load(mergeProgress(MEM, all, true)); store.set('imported', todayKey()); note.textContent = 'Progress loaded.'; setTimeout(planView, 600);
     } catch (e) { note.textContent = 'That code could not be read. Copy the whole code, starting with BFA1:, and try again.'; }
   };
 }
