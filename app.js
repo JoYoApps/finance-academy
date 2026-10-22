@@ -870,3 +870,128 @@ cloudInit();
 const net = document.getElementById('net');
 function netState(){ if (net) net.hidden = navigator.onLine; }
 window.addEventListener('online', netState); window.addEventListener('offline', netState); netState();
+
+/* ---------- pocket calculator ----------
+   A floating button opens a small calculator over whatever page is showing. It sits outside #app,
+   so opening or closing it never re-renders the page or touches answers. "Put in answer" types the
+   result into the last answer box tapped. Percent works like a desk calculator: 200 + 10% = 220. */
+(function pocketCalc(){
+  const fab = document.createElement('button');
+  fab.className = 'calcfab'; fab.type = 'button'; fab.setAttribute('aria-label', 'Open calculator');
+  fab.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="3" width="14" height="18" rx="2"/><path d="M8 7h8M8 12h.01M12 12h.01M16 12h.01M8 16h.01M12 16h.01M16 16h.01"/></svg>';
+  const sheet = document.createElement('div');
+  sheet.className = 'calcsheet'; sheet.hidden = true; sheet.setAttribute('role', 'dialog'); sheet.setAttribute('aria-label', 'Calculator');
+  const KEYS = [['C', 'clear'], ['(', '('], [')', ')'], ['xʸ', '^'], ['⌫', 'back'],
+    ['7', '7'], ['8', '8'], ['9', '9'], ['÷', '÷'], ['%', '%'],
+    ['4', '4'], ['5', '5'], ['6', '6'], ['×', '×'], ['Ans', 'ans'],
+    ['1', '1'], ['2', '2'], ['3', '3'], ['−', '−'], ['+', '+'],
+    ['0', '0', 'w2'], ['.', '.'], ['=', 'eq', 'w2 eq']];
+  sheet.innerHTML = `<div class="calchead"><b>Calculator</b>
+      <button type="button" class="calcuse" hidden>Put in answer</button>
+      <button type="button" class="calcx" aria-label="Close calculator">✕</button></div>
+    <div class="calcdisp"><div class="calchist" aria-live="polite"></div><div class="calcexpr">0</div><div class="calcres"></div></div>
+    <div class="calckeys">${KEYS.map(([t, k, c]) => `<button type="button" data-k="${k}" class="${c || ''}${/[0-9.]/.test(k) ? ' cnum' : ''}">${t}</button>`).join('')}</div>`;
+  document.body.append(fab, sheet);
+  const $ = s => sheet.querySelector(s);
+  let expr = '', ans = 0, hist = [], target = null, justDone = false;
+
+  // safe evaluator (no eval): + − × ÷ ^ ( ) % and decimals
+  function evaluate(src){
+    const t = src.replace(/Ans/g, '(' + ans + ')').match(/\d*\.?\d+(?:e[+-]?\d+)?|[-+−×÷*/^()%]/g) || [];
+    let i = 0;
+    const peek = () => t[i], next = () => t[i++];
+    const isAdd = s => s === '+' || s === '−' || s === '-';
+    function expr_(){
+      let v = term().v;
+      while (isAdd(peek())){
+        const op = next(), r = term();
+        const rv = r.pct ? v * r.v : r.v;   // 200 + 10% means 200 + 10% of 200
+        v = op === '+' ? v + rv : v - rv;
+      }
+      return v;
+    }
+    function term(){
+      let f = power(), v = f.v, pct = f.pct, n = 0;
+      while (['×', '÷', '*', '/'].includes(peek()) || peek() === '(' || /^[\d.]/.test(peek() || '')){
+        const op = ['×', '÷', '*', '/'].includes(peek()) ? next() : '×';   // 2(3) means 2 × 3
+        const r = power(); v = op === '÷' || op === '/' ? v / r.v : v * r.v; pct = false; n++;
+      }
+      return {v, pct: pct && !n};
+    }
+    function power(){
+      const b = unary();
+      if (peek() === '^'){ next(); const e = power(); return {v: Math.pow(b.v, e.v), pct: false}; }
+      return b;
+    }
+    function unary(){
+      if (isAdd(peek())){ const s = next(); const u = unary(); return {v: s === '+' ? u.v : -u.v, pct: u.pct}; }
+      let v;
+      if (peek() === '('){ next(); v = expr_(); if (peek() === ')') next(); }   // missing ")" closes itself
+      else { const n = next(); if (n === undefined || isNaN(n)) throw 0; v = +n; }
+      let pct = false;
+      while (peek() === '%'){ next(); v /= 100; pct = true; }
+      return {v, pct};
+    }
+    if (!t.length) return null;
+    const v = expr_();
+    if (i < t.length || !isFinite(v)) throw 0;
+    return v;
+  }
+  const tidy = v => +v.toPrecision(12);
+  const show = v => tidy(v).toLocaleString('en-AU', {maximumFractionDigits: 10});
+  function paint(){
+    $('.calcexpr').textContent = expr || '0';
+    let r = '';
+    try { const v = evaluate(expr); if (v !== null && !justDone) r = '= ' + show(v); } catch (e) { r = ''; }
+    $('.calcres').textContent = r;
+    $('.calchist').innerHTML = hist.map(h => `<span>${h}</span>`).join('');
+    $('.calcuse').hidden = !target || !document.body.contains(target);
+  }
+  function press(k){
+    const ops = '+−×÷^';
+    if (k === 'clear'){ expr = ''; justDone = false; }
+    else if (k === 'back'){ expr = justDone ? '' : expr.replace(/(Ans|.)$/, ''); justDone = false; }
+    else if (k === 'eq'){
+      try { const v = evaluate(expr); if (v === null) return; hist = hist.concat(`${expr} = ${show(v)}`).slice(-3); ans = tidy(v); expr = String(ans); justDone = true; }
+      catch (e) { $('.calcres').textContent = 'Check the sum'; return; }
+    }
+    else {
+      const tok = k === 'ans' ? 'Ans' : k;
+      if (justDone && !ops.includes(tok) && tok !== '%') expr = '';   // a new number starts a new sum
+      justDone = false;
+      if (ops.includes(tok) && ops.includes(expr.slice(-1)) && !(tok === '−' && expr.slice(-1) !== '−')) expr = expr.slice(0, -1);
+      expr += tok;
+    }
+    paint();
+  }
+  function open(){ sheet.hidden = false; fab.hidden = true; paint(); $('.calcx').focus({preventScroll: true}); }
+  function close(){ sheet.hidden = true; fab.hidden = false; }
+  fab.onclick = open;
+  $('.calcx').onclick = close;
+  $('.calckeys').onclick = e => { const b = e.target.closest('button'); if (b) press(b.dataset.k); };
+  // remember the last answer box used, so the result can be put into it
+  document.addEventListener('focusin', e => {
+    const el = e.target;
+    if (sheet.contains(el)) return;
+    if (el.matches('textarea, input:not([type=checkbox]):not([type=radio]):not([type=date]):not([type=button]):not([type=submit])')) { target = el; if (!sheet.hidden) paint(); }
+  });
+  $('.calcuse').onclick = () => {
+    if (!target || !document.body.contains(target)) return;
+    let v; try { v = evaluate(expr); } catch (e) { v = null; }
+    const s = String(tidy(v === null ? ans : v));
+    if (target.type === 'number' || target.tagName !== 'TEXTAREA') target.value = target.tagName === 'TEXTAREA' ? target.value + s : s;
+    else { const a = target.selectionStart ?? target.value.length, b = target.selectionEnd ?? a; target.value = target.value.slice(0, a) + s + target.value.slice(b); }
+    target.dispatchEvent(new Event('input', {bubbles: true})); target.dispatchEvent(new Event('change', {bubbles: true}));
+    close(); target.focus({preventScroll: true});
+  };
+  // typing on a keyboard works too while the calculator is open
+  document.addEventListener('keydown', e => {
+    if (sheet.hidden || e.ctrlKey || e.metaKey || e.altKey) return;
+    if (e.target.matches && e.target.matches('input, textarea, select')) return;
+    const map = {'*': '×', 'x': '×', '/': '÷', '-': '−', 'Enter': 'eq', '=': 'eq', 'Backspace': 'back', 'Delete': 'clear', 'Escape': 'esc'};
+    const k = map[e.key] || (/^[0-9.+()%^]$/.test(e.key) ? e.key : null);
+    if (!k) return;
+    e.preventDefault();
+    if (k === 'esc') close(); else press(k);
+  });
+})();
