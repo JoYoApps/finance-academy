@@ -1,6 +1,6 @@
 // Caches the whole course on first visit so it works offline. Bumps automatically on every build.
-const CACHE = 'bfa-884479e4a81e';
-const FILES = ["./", "index.html", "app.css", "manifest.webmanifest", "icon-192.png", "icon-512.png", "icon-180.png", "curriculum.js", "practice.js", "week01.js", "week01b.js", "week01x.js", "week02.js", "week02b.js", "week02x.js", "app.js", "audio/w01-day-1.mp3", "audio/w01-day-2.mp3", "audio/w01-day-3.mp3", "audio/w01-day-4.mp3", "audio/w01-day-5.mp3", "audio/w02-day-1.mp3", "audio/w02-day-2.mp3", "audio/w02-day-3.mp3", "audio/w02-day-4.mp3", "audio/w02-day-5.mp3"];
+const CACHE = 'bfa-c518daf178f9';
+const FILES = ["./", "index.html", "app.css", "manifest.webmanifest", "icon-192.png", "icon-512.png", "icon-180.png", "curriculum.js", "practice.js", "week01.js", "week01b.js", "week01x.js", "week02.js", "week02b.js", "week02x.js", "week03.js", "week03b.js", "week03x.js", "app.js", "audio/w01-day-1.mp3", "audio/w01-day-2.mp3", "audio/w01-day-3.mp3", "audio/w01-day-4.mp3", "audio/w01-day-5.mp3", "audio/w02-day-1.mp3", "audio/w02-day-2.mp3", "audio/w02-day-3.mp3", "audio/w02-day-4.mp3", "audio/w02-day-5.mp3", "audio/w03-day-1.mp3", "audio/w03-day-2.mp3", "audio/w03-day-3.mp3", "audio/w03-day-4.mp3", "audio/w03-day-5.mp3"];
 self.addEventListener('install', e => { e.waitUntil(caches.open(CACHE).then(c => c.addAll(FILES)).then(() => self.skipWaiting())); });
 self.addEventListener('activate', e => { e.waitUntil(caches.keys().then(ks => Promise.all(ks.filter(k => k !== CACHE && k.startsWith('bfa-')).map(k => caches.delete(k)))).then(() => self.clients.claim())); });
 self.addEventListener('fetch', e => {

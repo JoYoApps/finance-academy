@@ -200,6 +200,98 @@
       return mc(`An online store sells an item for ${$(inc, 2)} including GST. Product cost ${$(cogs)}, card fees 2% of the ex-GST price, shipping ${$(ship)}. What is the contribution per sale?`,
         c, [inc - cogs - fee - ship, ex - cogs, inc - cogs, c * .8], x => $(x, 2),
         `Ex-GST price ${$(ex, 2)} − product ${$(cogs)} − fees ${$(fee, 2)} − shipping ${$(ship)} = ${$(c, 2)}. Forgetting GST or the small per-sale costs overstates it.`);
+    },
+    // Week 3: money maths in practice
+    fvFreq(){
+      const pv = R(5, 100) * 1000, r = R(3, 12), n = R(3, 20), f = pick([[12, 'monthly'], [4, 'quarterly'], [365, 'daily']]), fv = pv * (1 + r / 100 / f[0]) ** (n * f[0]), fa = pv * (1 + r / 100) ** n;
+      return mc(`You invest ${$(pv)} at ${r}% a year, compounded ${f[1]}, for ${n} years. What will it be worth?`,
+        fv, [fa, pv * (1 + r / 100 * n), pv * (1 + r / 100 / f[0]) ** n, fv * 1.08], $,
+        `Rate per period ${r}% ÷ ${f[0]}, periods ${n} × ${f[0]} = ${n * f[0]}. FV = ${$(pv)} × (1 + ${r / 100}/${f[0]})^${n * f[0]} = ${$(fv)}. Compounded annually it would be ${$(fa)}.`);
+    },
+    solveRate(){
+      const pv = R(50, 900, 10) * 1000, r = R(3, 12) + pick([0, .5]), n = R(3, 15), fv = Math.round(pv * (1 + r / 100) ** n / 1000) * 1000, ra = ((fv / pv) ** (1 / n) - 1) * 100, simple = (fv / pv - 1) / n * 100;
+      return mc(`An asset bought for ${$(pv)} sells for ${$(fv)} ${n} years later. What annual compound return did it earn?`,
+        ra, [simple, (fv / pv - 1) * 100, ra * 1.4, ra * .7], x => pct(x, 2),
+        `Rate = (FV ÷ PV)^(1/n) − 1 = (${$(fv)} ÷ ${$(pv)})^(1/${n}) − 1 = ${pct(ra, 2)} a year. Dividing the total gain by the years (${pct(simple, 2)}) ignores compounding. Spreadsheet: =RATE(${n},0,-${pv},${fv}).`);
+    },
+    solveYears(){
+      const pv = R(10, 200, 5) * 1000, r = R(3, 12), m = pick([1.5, 2, 3]), y = Math.log(m) / Math.log(1 + r / 100);
+      return mc(`How many years does it take ${$(pv)} to grow to ${$(pv * m)} at ${r}% a year compounded annually?`,
+        y, [(m - 1) / (r / 100), y * 1.5, y * 1.35 + 1, y * .6], x => (Math.round(x * 10) / 10).toLocaleString('en-AU') + ' years',
+        `n = ln(FV ÷ PV) ÷ ln(1 + r) = ln(${m}) ÷ ln(${1 + r / 100}) = ${(Math.round(y * 10) / 10)} years. Spreadsheet: =NPER(${r}%,0,-${pv},${pv * m}).`);
+    },
+    annuityFV(){
+      const p = R(2, 20) * 100, r = pick([3, 4, 4.5, 5, 6, 7]), y = R(5, 30), i = r / 1200, n = y * 12, fv = p * ((1 + i) ** n - 1) / i;
+      return mc(`You save ${$(p)} at the end of every month for ${y} years in an account paying ${r}% a year, compounded monthly. How much will you have?`,
+        fv, [p * n, p * n * (1 + r / 100 * y / 2) * 1.15, fv * 1.2, fv * .8], $,
+        `FV of an annuity = PMT × ((1 + i)^n − 1) ÷ i, with i = ${r}% ÷ 12 and n = ${n}. Result ${$(fv)}, of which you paid in ${$(p * n)}. Spreadsheet: =FV(${r}%/12,${n},-${p}).`);
+    },
+    annuityPV(){
+      const p = R(15, 60) * 100, r = pick([5, 5.5, 6, 6.5, 7, 7.5]), y = pick([25, 30]), i = r / 1200, n = y * 12, pv = p * (1 - (1 + i) ** -n) / i;
+      return mc(`You can afford repayments of ${$(p)} a month. Roughly how much can you borrow at ${r}% a year over ${y} years?`,
+        pv, [p * n, p * 12 / (r / 100), pv * 1.25, pv * .75], $,
+        `Borrowing = PV of the repayments = PMT × (1 − (1 + i)^−n) ÷ i = ${$(pv)}. Multiplying ${$(p)} by ${n} payments ignores interest. Spreadsheet: =PV(${r}%/12,${n},-${p}).`);
+    },
+    savingsGoal(){
+      const goal = R(20, 200, 10) * 1000, r = pick([3, 4, 4.5, 5]), y = R(2, 10), i = r / 1200, n = y * 12, p = goal * i / ((1 + i) ** n - 1);
+      return mc(`You want ${$(goal)} in ${y} years. Your account pays ${r}% a year, compounded monthly. How much must you save at the end of each month?`,
+        p, [goal / n, goal * i / (1 - (1 + i) ** -n), p * 1.15, p * .8], x => $(x),
+        `Solve the annuity FV formula for PMT: ${$(goal)} × i ÷ ((1 + i)^n − 1) = ${$(p, 2)} a month. Simply dividing by ${n} months (${$(goal / n)}) ignores interest. Spreadsheet: =PMT(${r}%/12,${n},0,${goal}).`);
+    },
+    perpetuity(){
+      const c = R(5, 200, 5) * 1000, r = pick([4, 5, 6, 7, 8, 10]), v = c / (r / 100);
+      return mc(`An asset pays ${$(c)} a year forever. At a ${r}% required return, what is it worth today?`,
+        v, [c * r, c * 20, v / 2, c / ((r + 2) / 100)], $,
+        `Perpetuity value = payment ÷ rate = ${$(c)} ÷ ${r / 100} = ${$(v)}. The same formula is the cap rate method for property.`);
+    },
+    ear(){
+      const r = pick([6, 8, 9.99, 12, 15, 18, 19.99, 21.99]), f = pick([[12, 'monthly'], [365, 'daily'], [4, 'quarterly']]), e = ((1 + r / 100 / f[0]) ** f[0] - 1) * 100;
+      return mc(`A rate is quoted as ${r}% a year, compounded ${f[1]}. What is the effective annual rate?`,
+        e, [r, r * 1.2, r / f[0], e + 2], x => pct(x, 2),
+        `EAR = (1 + ${r}% ÷ ${f[0]})^${f[0]} − 1 = ${pct(e, 2)}. Compounding makes the effective rate higher than the nominal rate.`);
+    },
+    interestSplit(){
+      const P = R(30, 120) * 10000, r = pick([5.5, 6, 6.5, 7]), y = 30, i = r / 1200, n = 360, pmt = P * i / (1 - (1 + i) ** -n), int = P * i, pr = pmt - int;
+      return mc(`On a ${$(P)} loan at ${r}% over ${y} years, the repayment is ${$(pmt, 2)} a month. How much of the FIRST repayment reduces the loan?`,
+        pr, [pmt, int, P / n, pmt / 2], x => $(x),
+        `First month's interest = ${$(P)} × ${r}% ÷ 12 = ${$(int, 2)}. Principal = ${$(pmt, 2)} − ${$(int, 2)} = ${$(pr, 2)}. Early repayments are mostly interest.`);
+    },
+    offsetSaving(){
+      const off = R(10, 150, 5) * 1000, r = pick([5.5, 6, 6.5]), t = pick([30, 37, 45]), save = off * r / 100, td = pick([4, 4.25, 4.5]), dep = off * td / 100 * (1 - (t + 2) / 100);
+      return mc(`You have ${$(off)} spare. Your home loan rate is ${r}%. You pay ${t}% tax plus the 2% Medicare levy. How much better off are you in a year by keeping the money in your offset account rather than a ${td}% savings account? (Ignore compounding.)`,
+        save - dep, [save, off * td / 100, save - off * td / 100, dep], $,
+        `Offset saves ${$(off)} × ${r}% = ${$(save)} of interest, tax free. Savings earn ${$(off * td / 100)}, taxed at ${t + 2}%, leaving ${$(dep)}. Difference ${$(save - dep)}.`);
+    },
+    realReturn(){
+      const n = pick([4, 5, 6, 7, 8, 9, 10]), inf = pick([2, 2.5, 3, 3.5, 4]), real = ((1 + n / 100) / (1 + inf / 100) - 1) * 100;
+      return mc(`An investment earns ${n}% a year when inflation is ${inf}%. What is the exact real return (Fisher equation)?`,
+        real, [n + inf, n / inf, real + 0.5, (n - inf) * 1.2], x => pct(x, 2),
+        `1 + real = (1 + ${n}%) ÷ (1 + ${inf}%) → real = ${pct(real, 2)}. The quick approximation, ${n} − ${inf} = ${pct(n - inf, 1)}, is close at low rates.`);
+    },
+    purchasingPower(){
+      const a = R(20, 500, 10) * 1000, inf = pick([2, 2.5, 3, 4]), y = R(5, 30), v = a / (1 + inf / 100) ** y;
+      return mc(`With inflation averaging ${inf}% a year, what will ${$(a)} in ${y} years buy in today's dollars?`,
+        v, [a * (1 - inf / 100 * y), a, a * (1 + inf / 100) ** y, v * .8], $,
+        `Discount by inflation: ${$(a)} ÷ (1 + ${inf}%)^${y} = ${$(v)}. Inflation is compounding in reverse.`);
+    },
+    afterTaxReal(){
+      const r = pick([4, 4.5, 5, 5.5]), t = pick([15, 30, 37, 45]), inf = pick([2.5, 3, 3.5]), at = r * (1 - t / 100), real = ((1 + at / 100) / (1 + inf / 100) - 1) * 100;
+      return mc(`A term deposit pays ${r}%. You pay tax at ${t}% and inflation is ${inf}%. What is your real after-tax return, to two decimals?`,
+        real, [r - inf, at, ((1 + r / 100) / (1 + inf / 100) - 1) * 100 * (1 - t / 100), real + 1.2], x => pct(x, 2),
+        `After tax: ${r}% × (1 − ${t}%) = ${pct(at, 2)}. Real: (1 + ${pct(at, 2)}) ÷ (1 + ${inf}%) − 1 = ${pct(real, 2)}. Tax applies to the nominal return, which is why cash often barely keeps up with prices.`);
+    },
+    gearedReturn(){
+      const V = R(500, 1500, 50) * 1000, dep = pick([.2, .25, .3, .4]), D = V * (1 - dep), E = V * dep, y = pick([2.5, 3, 3.5, 4]), r = pick([5.5, 6, 6.5, 7]), g = pick([-5, 0, 3, 5, 8]);
+      const inc = V * y / 100, int = D * r / 100, ret = (V * g / 100 + inc - int) / E * 100;
+      return mc(`You buy a property for ${$(V)} with a ${pct(dep * 100, 0)} deposit. Net rent is ${y}% of the value; the loan costs ${r}% interest. If the value ${g === 0 ? 'stays flat' : (g > 0 ? 'rises ' : 'falls ') + Math.abs(g) + '%'} over the year, what is the return on your equity?`,
+        ret, [g / dep, g + y - r, ret + int / E * 100, g], x => (x < 0 ? '−' : '+') + pct(Math.abs(x), 1),
+        `Equity ${$(E)}. Value change ${$(V * g / 100)} + net rent ${$(inc)} − interest ${$(int)} = ${$(V * g / 100 + inc - int)}, which is ${pct(ret, 1)} of equity. Leverage multiplies the gap between what the asset earns and what the loan costs.`);
+    },
+    breakEvenGrowth(){
+      const V = R(500, 1500, 50) * 1000, dep = pick([.2, .3]), D = V * (1 - dep), y = pick([2.5, 3, 3.5]), r = pick([6, 6.5, 7]), gap = D * r / 100 - V * y / 100, be = gap / V * 100;
+      return mc(`A ${$(V)} property is bought with a ${pct(dep * 100, 0)} deposit. Net rent is ${y}% of value and the loan rate is ${r}%. What annual price growth does it need just to break even?`,
+        be, [r - y, r, be * 2, be / 2], x => pct(x, 2),
+        `Interest ${$(D * r / 100)} − rent ${$(V * y / 100)} = ${$(gap)} shortfall a year. Growth needed = ${$(gap)} ÷ ${$(V)} = ${pct(be, 2)}.`);
     }
   };
   window.PRACTICE = G;
