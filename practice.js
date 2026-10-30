@@ -292,6 +292,60 @@
       return mc(`A ${$(V)} property is bought with a ${pct(dep * 100, 0)} deposit. Net rent is ${y}% of value and the loan rate is ${r}%. What annual price growth does it need just to break even?`,
         be, [r - y, r, be * 2, be / 2], x => pct(x, 2),
         `Interest ${$(D * r / 100)} − rent ${$(V * y / 100)} = ${$(gap)} shortfall a year. Growth needed = ${$(gap)} ÷ ${$(V)} = ${pct(be, 2)}.`);
+    },
+    // Week 4: the financial system
+    bankLeverage(){
+      const A = R(50, 900, 10), eqp = pick([5, 5.5, 6, 6.5, 7, 8]), E = A * eqp / 100, mode = R(0, 1);
+      if (mode) return mc(`A bank has ${$(A)}bn of assets funded with ${$(E, 1)}bn of shareholders' equity. What share of its assets would have to be lost to wipe out its equity entirely?`,
+        eqp, [100 - eqp, A / E, eqp * 2, eqp / 2], x => pct(x, 1),
+        `Equity ÷ assets = ${$(E, 1)}bn ÷ ${$(A)}bn = ${pct(eqp, 1)}. Losses beyond that leave nothing for shareholders. Leverage multiple ${(A / E).toFixed(1)}×.`);
+      return mc(`A bank has ${$(A)}bn of assets and ${$(E, 1)}bn of equity. What is its leverage multiple (assets ÷ equity)?`,
+        A / E, [E / A * 100, (A - E) / A * 10, A / E / 2, A / E * 1.5], x => x.toFixed(1) + '×',
+        `${$(A)}bn ÷ ${$(E, 1)}bn = ${(A / E).toFixed(1)}×. A 1% fall in asset values cuts equity by about ${(A / E).toFixed(0)}%.`);
+    },
+    bankROE(){
+      const A = R(20, 200, 10), nim = pick([1.6, 1.8, 2, 2.2]), cost = pick([40, 45, 50]), bad = pick([.05, .1, .15, .2]), eqp = pick([5, 6, 7]), nii = A * nim / 100, c = nii * cost / 100, bd = A * bad / 100, np = (nii - c - bd) * .7, E = A * eqp / 100, roe = np / E * 100;
+      return mc(`A bank with ${$(A)}bn of assets earns a net interest margin of ${nim}%. Operating costs are ${cost}% of net interest income, bad debts are ${bad}% of assets, tax is 30%, and equity is ${eqp}% of assets. What is its return on equity?`,
+        roe, [np / A * 100, nim, roe * .7, roe * 1.3], x => pct(x, 1),
+        `Net interest income ${$(nii, 2)}bn − costs ${$(c, 2)}bn − bad debts ${$(bd, 2)}bn = ${$(nii - c - bd, 2)}bn before tax, ${$(np, 2)}bn after. ÷ equity ${$(E, 1)}bn = ${pct(roe, 1)}. A thin margin magnified by leverage.`);
+    },
+    afterTaxDebt(){
+      const r = pick([5, 5.5, 6, 6.5, 7, 7.5, 8, 9]), t = pick([25, 30]), at = r * (1 - t / 100);
+      return mc(`A company borrows at ${r}% and pays company tax at ${t}%. What is its after-tax cost of debt?`,
+        at, [r, r * t / 100, r + t / 10, at * 1.2], x => pct(x, 2),
+        `Interest is tax deductible: ${r}% × (1 − ${t}%) = ${pct(at, 2)}. Dividends are not deductible, which is one reason debt is cheaper than equity.`);
+    },
+    gearingROE(){
+      const A = R(2, 50) * 1e6, roa = pick([4, 6, 8, 10, 12, 15]), d = pick([.3, .4, .5, .6]), r = pick([6, 7, 8]), D = A * d, E = A - D, ebit = A * roa / 100, roe = (ebit - D * r / 100) * .7 / E * 100;
+      return mc(`A company has ${$(A)} of assets earning ${roa}% before interest and tax. It is funded ${pct(d * 100, 0)} by debt at ${r}% and the rest by equity. Tax is 30%. What is its return on equity?`,
+        roe, [roa * .7, roa, roe * (1 - d), roa * .7 / (1 - d)], x => (x < 0 ? '−' : '') + pct(Math.abs(x), 1),
+        `EBIT ${$(ebit)} − interest ${$(D * r / 100)} = ${$(ebit - D * r / 100)} before tax; × 0.7 = ${$((ebit - D * r / 100) * .7)}. ÷ equity ${$(E)} = ${(roe < 0 ? '−' : '') + pct(Math.abs(roe), 1)}${roe < 0 ? ' (assuming the loss gives a tax benefit)' : ''}. All-equity it would be ${pct(roa * .7, 1)}: debt ${roa > r ? 'helps because assets earn more than the loan rate' : roa === r ? 'makes no difference because assets earn exactly the loan rate' : 'hurts because assets earn less than the loan rate'}.`);
+    },
+    waterfall(){
+      const prop = R(2, 10) * 1e6, mort = prop * pick([.6, .7, .8, .9]), other = R(1, 8) * 1e6, costs = R(2, 8) * 1e5, emp = R(3, 20) * 1e5, uns = R(3, 15) * 1e6;
+      const pool = prop - mort + other, left = Math.max(pool - costs - emp, 0), c = Math.min(left / uns, 1) * 100;
+      if (left <= 0 || c >= 100) return G.waterfall();
+      return mc(`A company is liquidated. Its building sells for ${$(prop)} and the bank holds a ${$(mort)} mortgage over it. Other assets raise ${$(other)}. Liquidation costs are ${$(costs)}, employee entitlements ${$(emp)}, and unsecured creditors are owed ${$(uns)}. How many cents in the dollar do unsecured creditors receive?`,
+        c, [(prop + other - costs - emp) / uns * 100, (other - costs - emp) / uns * 100, (pool) / uns * 100, c * .6], x => Math.round(x) + 'c',
+        `Bank is paid ${$(mort)} from the building; surplus ${$(prop - mort)} joins other assets: pool ${$(pool)}. Less costs ${$(costs)} and employees ${$(emp)} = ${$(left)} for unsecured creditors owed ${$(uns)}: ${Math.round(c)}c in the dollar. Shareholders get nothing.`);
+    },
+    bondPrice(){
+      const c = pick([3, 4, 4.5, 5, 6]), n = pick([2, 3, 5, 10]), y = c + pick([-1.5, -1, -.5, .5, 1, 1.5]), p = Array.from({length: n}, (_, k) => c / (1 + y / 100) ** (k + 1)).reduce((a, b) => a + b, 0) + 100 / (1 + y / 100) ** n;
+      return mc(`A bond with a $100 face value pays a ${c}% coupon once a year and matures in ${n} years. Market yields are now ${y}%. What is its price?`,
+        p, [200 - p, 100, 100 * (1 + (c - y) / 100), p + (p > 100 ? -2 : 2) * n / 2], x => $(x, 2),
+        `Discount each $${c} coupon and the $100 repayment at ${y}%: price ${$(p, 2)}. Yield ${y > c ? 'above' : 'below'} the coupon → price ${y > c ? 'below' : 'above'} $100. Price and yield always move in opposite directions.`);
+    },
+    marketCap(){
+      const sh = R(50, 3000, 10), px = R(1, 120) + pick([0, .5]), cap = sh * px;
+      return mc(`A listed company has ${num(sh)} million shares on issue trading at ${$(px, 2)}. What is its market capitalisation?`,
+        cap, [sh / px, cap / 10, cap * 10, px * 100], x => x >= 1000 ? $(x / 1000, 2) + 'bn' : $(x) + 'm',
+        `Market cap = shares × price = ${num(sh)}m × ${$(px, 2)} = ${cap >= 1000 ? $(cap / 1000, 2) + 'bn' : $(cap) + 'm'}.`);
+    },
+    fcsCover(){
+      const bal = R(30, 120) * 10000, banks = pick([1, 2, 3]), covered = Math.min(bal, 250000 * banks);
+      return mc(`You hold ${$(bal)} in deposits, spread evenly across ${banks} separately licensed Australian bank${banks > 1 ? 's' : ''}. How much is protected by the Financial Claims Scheme?`,
+        covered, [250000, bal, covered / 2 + 125000, 250000 * (banks + 1)], $,
+        `The guarantee covers up to $250,000 per account holder per licensed ADI. ${banks} × $250,000 = ${$(250000 * banks)} limit; your covered amount is ${$(covered)}${bal > covered ? `, leaving ${$(bal - covered)} unprotected` : ''}.`);
     }
   };
   window.PRACTICE = G;
