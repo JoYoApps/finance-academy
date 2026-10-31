@@ -33,7 +33,7 @@
     {t: 'A $4.5 trillion giant', tag: 'Numbers',
       b: "<p>Compulsory super, now 12% of wages, has made Australia's pension pool one of the largest in the world, at more than $4.5 trillion in 2026 (about $4.8 trillion by June): well above the size of the whole economy's annual output. Super funds are among the biggest owners of ASX shares and major investors in infrastructure, property and private markets.</p>",
       src: 'APRA, Quarterly superannuation statistics',
-      q: {q: 'The superannuation guarantee rate is:', o: ['9.5%', '11%', '12%', '15%'], a: 2, e: '12% of ordinary time earnings from 1 July 2025.', c: 'starting-company'}},
+      q: {q: 'The superannuation guarantee rate is:', o: ['9.5%', '11%', '12%', '15%'], a: 2, e: '12% from 1 July 2025. Since 1 July 2026 it is calculated on qualifying earnings (mainly ordinary time earnings) and paid with each pay (Payday Super).', c: 'starting-company'}},
     {t: 'Private credit under the spotlight', tag: 'Australia',
       b: "<p>Private credit funds have grown quickly, offering investors high income from loans to businesses and developers. In 2025 ASIC made the sector a priority, reviewing how funds value loans, how much they charge borrowers and investors, how they handle conflicts, and what they disclose. Questions to ask any fund: who values the loans, what fees go where, and can I get my money out?</p>",
       src: 'ASIC, private credit surveillance and reports (2025)',
@@ -41,6 +41,10 @@
     {t: 'The director penalty notice', tag: 'Directors',
       b: "<p>If a company does not pay its PAYG withholding, GST or superannuation guarantee, the ATO can issue its directors a <b>director penalty notice</b>, making them personally liable for an equal amount. Once those debts are more than three months overdue and unreported, the main escape routes close. New directors become liable for existing debts after 30 days.</p><p class='note'>Directors' duties in depth: Month 10.</p>",
       src: 'ATO, Director penalties',
-      q: {q: 'A director penalty notice makes a director personally liable for a company\'s unpaid:', o: ['Trade suppliers', 'Bank loans', 'PAYG withholding, GST or super guarantee', 'Dividends'], a: 2, e: 'Those are the tax and super debts covered by the director penalty regime.', c: 'regulators'}}
+      q: {q: 'A director penalty notice makes a director personally liable for a company\'s unpaid:', o: ['Trade suppliers', 'Bank loans', 'PAYG withholding, GST or super guarantee', 'Dividends'], a: 2, e: 'Those are the tax and super debts covered by the director penalty regime.', c: 'regulators'}},
+    {t: 'The small business tax gap', tag: 'Australia',
+      b: "<p>The ATO estimates how much tax should have been paid but was not. For small business income tax in 2023–24, the gap was about <b>$36 billion</b>, or <b>20.5%</b> of what was owed. That is the largest of the ATO's tax gaps, mostly from unreported cash income and overclaimed deductions.</p><p class='note'>This is why the ATO uses data matching (bank, card and app payment data) and industry benchmarks. A business well outside its industry's benchmarks is more likely to be reviewed.</p>",
+      src: 'ATO, Small business income tax gap: latest estimate and trends (updated October 2026)',
+      q: {q: 'About what share of small business income tax does the ATO estimate goes unpaid?', o: ['About 1%', 'About 5%', 'About 20%', 'About 50%'], a: 2, e: 'The ATO puts the small business income tax gap at about 20.5% of what was owed in 2023–24.'}}
   ];
 })();

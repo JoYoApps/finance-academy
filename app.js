@@ -43,9 +43,15 @@ function saveState(){
   return LS_OK ? {ok: true, short: 'Saved on this device', long: 'Progress is saved in this browser on this device. Each copy of the course (the claude.ai version, the web app, the offline file) and each browser keeps its own. For one record that follows you everywhere, use the claude.ai version: ' + ARTIFACT_URL}
     : {ok: false, short: 'Not saved: tap for help', long: 'This browser is blocking storage (private browsing, or site data turned off), so progress will be lost when you close it. Use the claude.ai version for saving that follows you: ' + ARTIFACT_URL};
 }
+/* right-hand corner of the header: save status and the calculator button */
+function hdrTools(){
+  let t = document.querySelector('header.bar .hdrtools');
+  if (!t) { const wrap = document.querySelector('header.bar .wrap'); if (!wrap) return null; t = document.createElement('div'); t.className = 'hdrtools'; wrap.appendChild(t); }
+  return t;
+}
 function showSave(){
   const st = saveState(); let chip = document.getElementById('savechip');
-  if (!chip) { const wrap = document.querySelector('header.bar .wrap'); if (!wrap) return; chip = document.createElement('a'); chip.id = 'savechip'; chip.href = '#plan'; chip.setAttribute('aria-live', 'polite'); wrap.appendChild(chip); }
+  if (!chip) { const tools = hdrTools(); if (!tools) return; chip = document.createElement('a'); chip.id = 'savechip'; chip.href = '#more'; chip.setAttribute('aria-live', 'polite'); tools.prepend(chip); }
   chip.className = 'savechip ' + (st.ok ? 'ok' : 'bad'); chip.textContent = (st.ok ? '● ' : '▲ ') + st.short;
   const el = document.getElementById('syncnote'); if (el) el.textContent = st.long;
 }
@@ -243,16 +249,13 @@ function today(){
   const due = dueConcepts(), help = struggling(), st = streak();
   const done = store.get('done', {}), doneCount = Object.keys(done).length;
   const xm = nextExamDue(), bod = biteOfDay();
+  const strong = Object.keys(CONCEPTS).filter(id => status(id) === 'strong').length;
   const hour = new Date().getHours(), hi = hour < 12 ? 'Good morning' : hour < 18 ? 'Good afternoon' : 'Good evening';
   app.innerHTML = `
     <p class="eyebrow" style="margin-top:28px">${hi}, Mitch</p>
     <h1>Today</h1>
-    <div class="stats">
-      <div><b>${st}</b><span>day streak</span></div>
-      <div><b>${doneCount}</b><span>of ${ALL_LESSONS.length} lessons</span></div>
-      <div><b>${Object.keys(CONCEPTS).filter(id => status(id) === 'strong').length}</b><span>concepts strong</span></div>
-    </div>
-    ${nl ? `<a class="hero" href="${built ? '#' + lessonKey(nl) : '#plan'}"><span class="eyebrow">Next lesson · Month ${nl.month} · Week ${nl.week} · Day ${nl.day}</span><h2>${esc(nl.title)}</h2><span class="note">${built ? 'Slides, a ten-minute audio lecture and practice questions' : 'This week is being written. It arrives on Saturday.'}</span><span class="go">${built ? 'Start →' : 'See plan →'}</span></a>` : ''}
+    ${nl ? `<a class="hero" href="${built ? '#' + lessonKey(nl) : '#plan'}"><span class="eyebrow">Next lesson · Month ${nl.month} · Week ${nl.week} · Day ${nl.day}</span><h2>${esc(nl.title)}</h2><span class="note">${built ? 'Slides, a ten-minute audio lecture and practice questions' : 'This week is being written. It arrives on Saturday.'}</span><span class="go">${built ? (doneCount ? 'Continue →' : 'Start →') : 'See plan →'}</span></a>` : ''}
+    <div class="progline"><div class="row"><span><b>${doneCount}</b> of ${ALL_LESSONS.length} lessons done</span><span>${st ? `🔥 ${st}-day streak` : 'Do one lesson to start a streak'}</span><span>${strong} concept${strong === 1 ? '' : 's'} strong</span></div><div class="progbar" role="progressbar" aria-valuemin="0" aria-valuemax="${ALL_LESSONS.length}" aria-valuenow="${doneCount}"><i style="width:${(100 * doneCount / ALL_LESSONS.length).toFixed(1)}%"></i></div></div>
     ${help.length ? `<section class="helpbox"><span class="eyebrow">Extra help</span><h3>You're finding ${help.length === 1 ? 'this concept' : 'these concepts'} tricky</h3><p class="note">Each one has a different explanation, a worked example and fresh practice questions.</p><div class="chips">${help.map(id => `<a class="chip s-struggling" href="#c-${id}">${esc(CONCEPTS[id].name)} →</a>`).join('')}</div></section>` : ''}
     ${xm ? `<a class="hero exam" href="#exam-${xm.id}"><span class="eyebrow">${EXAM_KIND[xm.kind]} ready</span><h2>${esc(xm.title)}</h2><span class="note">You have finished every lesson it covers. Sit it to lock in what you have learned.</span><span class="go">Go to exam →</span></a>` : ''}
     <section class="review"><div><span class="eyebrow">Spaced review</span><h3>${due.length ? `${due.length} concept${due.length > 1 ? 's' : ''} due for review` : 'Nothing due right now'}</h3><p class="note">${due.length ? 'Short, fresh questions on things you have learned, timed so they stick.' : 'Concepts come back for review just before you would forget them. Practise anything any time.'}</p></div><a class="btn ${due.length ? 'primary' : ''}" href="#practice">${due.length ? 'Start review' : 'Practise'}</a></section>
@@ -834,7 +837,10 @@ function askView(){
   if (!IN_CLAUDE) {
     app.innerHTML = `<p class="eyebrow" style="margin-top:28px">Ask Claude</p><h1>Ask a question</h1>
       <p class="lede">Asking Claude works in the claude.ai version of the course, where Claude can answer you right here and keep your questions for later.</p>
-      <p><a class="btn" href="${ARTIFACT_URL}" target="_blank" rel="noopener">Open the claude.ai version</a></p>`;
+      <p><a class="btn primary" href="${ARTIFACT_URL}" target="_blank" rel="noopener">Open the claude.ai version</a></p>
+      <p class="note">Your progress here and there is kept separately. To carry it across, use <a href="#plan">Copy progress code</a> on the Plan page.</p>
+      <h2>Quick answers here</h2>
+      <div class="moregrid"><a href="#glossary"><span class="ic" aria-hidden="true">📖</span><span><b>Look up a term</b><span class="d">Plain-English meaning of every term in the course</span></span></a><a href="#practice"><span class="ic" aria-hidden="true">🎯</span><span><b>Practise a concept</b><span class="d">Each one has a different explanation and worked example</span></span></a></div>`;
     return;
   }
   app.innerHTML = `<p class="eyebrow" style="margin-top:28px">Ask Claude</p><h1>Ask a question</h1>
@@ -871,11 +877,36 @@ function askView(){
 /* a small "Ask about this" link for lessons, concepts and quizzes */
 const askLink = () => IN_CLAUDE ? `<p class="asklink"><a href="#ask">💬 Ask Claude about this</a></p>` : '';
 
+/* ---------- More: everything that is not a main tab ---------- */
+const SIZES = [['Normal', 1], ['Large', 1.12], ['Larger', 1.25]];
+function applySize(){ const z = store.get('textsize', 1); app.style.zoom = z === 1 ? '' : z; }
+function moreView(){
+  setBrand(latest());
+  const z = store.get('textsize', 1), st = saveState();
+  const card = (href, ic, t, d) => `<a href="${href}"><span class="ic" aria-hidden="true">${ic}</span><span><b>${t}</b><span class="d">${d}</span></span></a>`;
+  app.innerHTML = `<p class="eyebrow" style="margin-top:28px">More</p><h1>More</h1>
+    <div class="moregrid">
+      ${card('#extras', '💡', 'Knowledge bites', 'One-minute extras with a question at the end')}
+      ${card('#exams', '📝', 'Exams', 'Month, term and final exams, with marking')}
+      ${card('#tools', '🧮', 'Tools', 'Loan, savings, tax and GST calculators')}
+      ${card('#glossary', '📖', 'Glossary', 'Every term in the course, searchable')}
+      <button type="button" id="morecalc"><span class="ic" aria-hidden="true">➗</span><span><b>Pocket calculator</b><span class="d">Also on the green button at the top of every page</span></span></button>
+      ${card('#plan', '🗺️', 'Course plan', 'All 19 months, your progress and the exams')}
+    </div>
+    <h2>Text size</h2>
+    <p class="sizeseg">${SIZES.map(([t, v]) => `<button type="button" data-z="${v}" aria-pressed="${v === z}">${t}</button>`).join('')}</p>
+    <h2>Saving your progress</h2>
+    <p class="note" id="syncnote">${esc(st.long)}</p>
+    <p><a class="btn" href="#plan">Progress code and backup options</a></p>`;
+  document.getElementById('morecalc').onclick = () => window.openCalc && window.openCalc();
+  app.querySelectorAll('.sizeseg button').forEach(b => b.onclick = () => { store.set('textsize', +b.dataset.z); applySize(); moreView(); });
+}
+
 /* ---------- routing ---------- */
 function route(){
   const h = decodeURIComponent((location.hash || '#home').slice(1));
   let m;
-  const tab = /^(w\d+d\d+|week\d+|quiz\d*|home)$/.test(h) || h === '' ? 'home' : /^c-/.test(h) ? 'practice' : /^tool-/.test(h) ? 'tools' : /^exam/.test(h) ? 'plan' : h;
+  const tab = /^(w\d+d\d+|week\d+|quiz\d*|home)$/.test(h) || h === '' ? 'home' : /^c-/.test(h) ? 'practice' : /^exam/.test(h) ? 'plan' : /^(tool-|tools$|extras$|glossary$)/.test(h) ? 'more' : h;
   document.querySelectorAll('.mainnav a').forEach(a => { if (a.dataset.v === tab) a.setAttribute('aria-current', 'page'); else a.removeAttribute('aria-current'); });
   if ((m = h.match(/^w(\d+)d(\d+)$/))) lesson(+m[1], +m[2]);
   else if ((m = h.match(/^week(\d+)$/))) weekView(+m[1]);
@@ -890,10 +921,12 @@ function route(){
   else if (h === 'tools') toolsView();
   else if (h === 'glossary') glossaryView();
   else if (h === 'ask') askView();
+  else if (h === 'more') moreView();
   else today();
   window.scrollTo(0, 0);
 }
 window.addEventListener('hashchange', () => { clearInterval(examTimer); route(); });
+applySize();
 route();
 cloudInit();
 
@@ -921,7 +954,8 @@ window.addEventListener('online', netState); window.addEventListener('offline', 
       <button type="button" class="calcx" aria-label="Close calculator">✕</button></div>
     <div class="calcdisp"><div class="calchist" aria-live="polite"></div><div class="calcexpr">0</div><div class="calcres"></div></div>
     <div class="calckeys">${KEYS.map(([t, k, c]) => `<button type="button" data-k="${k}" class="${c || ''}${/[0-9.]/.test(k) ? ' cnum' : ''}">${t}</button>`).join('')}</div>`;
-  document.body.append(fab, sheet);
+  const tools = hdrTools(); if (tools) tools.append(fab); else document.body.append(fab);
+  document.body.append(sheet);
   const $ = s => sheet.querySelector(s);
   let expr = '', ans = 0, hist = [], target = null, justDone = false;
 
@@ -994,9 +1028,10 @@ window.addEventListener('online', netState); window.addEventListener('offline', 
     }
     paint();
   }
-  function open(){ sheet.hidden = false; fab.hidden = true; paint(); $('.calcx').focus({preventScroll: true}); }
-  function close(){ sheet.hidden = true; fab.hidden = false; }
-  fab.onclick = open;
+  function open(){ sheet.hidden = false; fab.setAttribute('aria-expanded', 'true'); paint(); $('.calcx').focus({preventScroll: true}); }
+  function close(){ sheet.hidden = true; fab.setAttribute('aria-expanded', 'false'); }
+  fab.onclick = () => sheet.hidden ? open() : close();
+  window.openCalc = open;
   $('.calcx').onclick = close;
   $('.calckeys').onclick = e => { const b = e.target.closest('button'); if (b) press(b.dataset.k); };
   // remember the last answer box used, so the result can be put into it

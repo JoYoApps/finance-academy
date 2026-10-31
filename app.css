@@ -106,7 +106,7 @@ textarea{width:100%;min-height:120px;font:15px/1.5 var(--body);padding:10px;bord
 .mainnav a{display:flex;align-items:center;gap:6px}
 .mainnav svg{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
 @media (max-width:720px){
-  .mainnav{position:fixed;left:0;right:0;bottom:0;z-index:10;background:var(--card);border-top:1px solid var(--rule);display:grid;grid-template-columns:repeat(7,1fr);gap:0;padding:4px 4px calc(4px + env(safe-area-inset-bottom,0px))}
+  .mainnav{position:fixed;left:0;right:0;bottom:0;z-index:10;background:var(--card);border-top:1px solid var(--rule);display:grid;grid-template-columns:repeat(5,1fr);gap:0;padding:4px 4px calc(4px + env(safe-area-inset-bottom,0px))}
   .mainnav a{flex-direction:column;gap:2px;font-size:11px;padding:6px 2px;border-radius:8px;text-align:center}
   .mainnav svg{width:22px;height:22px}
   .wrap#app{padding-bottom:110px}
@@ -213,13 +213,13 @@ input[type=date],input[type=number],input[type=search],select{font:16px var(--bo
 .askctx{display:flex;gap:8px;align-items:flex-start;margin:6px 0 10px}
 #askq{min-height:110px}
 .asklink{margin:10px 0 0}.asklink a{font-weight:600}
-@media (max-width:720px){.mainnav a{font-size:10px}.savechip{font-size:11px;padding:3px 8px}}
+@media (max-width:720px){.mainnav a{font-size:11px}.savechip{font-size:11px;padding:3px 8px}}
 @media (prefers-color-scheme: dark){:root:not([data-theme="light"]) .savechip.bad{color:#f2b8b5;border-color:#f2b8b5}}
 :root[data-theme="dark"] .savechip.bad{color:#f2b8b5;border-color:#f2b8b5}
 /* pocket calculator: floating button + bottom sheet, above the phone tab bar */
-.calcfab{position:fixed;right:16px;bottom:calc(20px + env(safe-area-inset-bottom,0px));z-index:11;width:52px;height:52px;padding:0;border-radius:50%;background:var(--green);border-color:var(--green);color:var(--card);display:grid;place-items:center;box-shadow:0 4px 14px rgb(0 0 0 / .22)}
+.calcfab{width:36px;height:36px;padding:0;border-radius:50%;background:var(--green);border-color:var(--green);color:var(--card);display:grid;place-items:center;flex:none;margin-left:8px}
 .calcfab[hidden]{display:none}
-.calcfab svg{width:26px;height:26px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.calcfab svg{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
 .calcsheet{position:fixed;right:16px;bottom:calc(16px + env(safe-area-inset-bottom,0px));z-index:12;width:min(340px,calc(100vw - 32px));background:var(--card);border:1px solid var(--rule);border-radius:16px;padding:12px;box-shadow:0 10px 32px rgb(0 0 0 / .28)}
 .calchead{display:flex;align-items:center;gap:8px;margin-bottom:8px}
 .calchead b{font:650 16px var(--display);margin-right:auto}
@@ -238,8 +238,25 @@ input[type=date],input[type=number],input[type=search],select{font:16px var(--bo
 .calckeys button.eq{background:var(--green);border-color:var(--green);color:var(--card);font-weight:650}
 .calckeys button:active{filter:brightness(.92)}
 @media (max-width:720px){
-  .calcfab{bottom:calc(76px + env(safe-area-inset-bottom,0px));width:46px;height:46px}
   .calcsheet{left:0;right:0;bottom:0;width:auto;border-radius:16px 16px 0 0;border-bottom:0;padding:12px 12px calc(12px + env(safe-area-inset-bottom,0px))}
   .calckeys button{height:50px}
 }
 @media print{.calcfab,.calcsheet{display:none!important}}
+
+/* header tools (save chip + calculator) sit together on the right */
+.hdrtools{display:flex;align-items:center;margin-left:auto}
+.hdrtools .savechip{margin-left:0}
+/* home: progress strip */
+.progline{background:var(--card);border:1px solid var(--rule);border-radius:10px;padding:12px 14px;margin:14px 0}
+.progline .row{display:flex;justify-content:space-between;gap:10px;font-size:14px;flex-wrap:wrap}
+.progline .row b{color:var(--green)}
+.progbar{height:8px;border-radius:99px;background:var(--paper);border:1px solid var(--rule);overflow:hidden;margin-top:8px}
+.progbar i{display:block;height:100%;background:var(--green);border-radius:99px;min-width:4px}
+/* More page */
+.moregrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:10px;margin:16px 0}
+.moregrid a,.moregrid button{display:flex;gap:12px;align-items:flex-start;text-align:left;background:var(--card);border:1px solid var(--rule);border-radius:12px;padding:14px;color:var(--ink);text-decoration:none;font:inherit;width:100%}
+.moregrid .ic{font-size:22px;line-height:1}
+.moregrid b{display:block;font-weight:650}
+.moregrid span.d{display:block;font-size:13px;color:var(--muted);margin-top:2px}
+.sizeseg{display:flex;gap:6px;flex-wrap:wrap}
+.sizeseg button[aria-pressed="true"]{background:var(--green);border-color:var(--green);color:var(--card)}
