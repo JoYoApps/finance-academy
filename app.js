@@ -902,12 +902,30 @@ function moreView(){
   app.querySelectorAll('.sizeseg button').forEach(b => b.onclick = () => { store.set('textsize', +b.dataset.z); applySize(); moreView(); });
 }
 
+/* ---------- one course, one account ----------
+   Only the claude.ai copy saves to Mitch's account. The web app and offline file open on a page that sends
+   him there (bringing any progress made in this copy), so he never ends up with progress split across copies. */
+const OTHER_COPY = /github\.io$/.test(location.hostname) || location.protocol === 'file:';
+function stayHere(){ try { return sessionStorage.getItem('bfa:stay') === '1' } catch (e) { return false } }
+function movedView(){
+  const has = Object.keys(store.get('done', {})).length;
+  app.innerHTML = `<p class="eyebrow" style="margin-top:28px">One course, one account</p><h1>Your course now lives on claude.ai</h1>
+    <p class="lede">Use the claude.ai version on your phone and your computer. It saves every lesson to your Claude account, so both stay in step.</p>
+    ${has ? `<section class="review"><div><span class="eyebrow">Step 1</span><h3>Bring your progress (${has} lesson${has === 1 ? '' : 's'} done here)</h3><p class="note">Copy your progress code, then in the claude.ai version go to Plan, tap Paste a progress code and paste it in. Nothing is lost: it adds to what your account already has.</p><p class="note" id="movenote"></p></div><button class="primary" id="movecopy">Copy progress code</button></section>` : ''}
+    <section class="review"><div><span class="eyebrow">${has ? 'Step 2' : 'Next'}</span><h3>Open the claude.ai version</h3><p class="note">Sign in to Claude if asked. Bookmark it on your computer. On your phone, open it in Safari, tap Share, then Add to Home Screen, and delete this old icon.</p></div><a class="btn primary" href="${ARTIFACT_URL}" target="_blank" rel="noopener">Open claude.ai version</a></section>
+    <p class="note"><a href="#home" id="stay">No internet? Use this copy just for now</a> (progress here stays on this device).</p>`;
+  const mv = document.getElementById('movecopy');
+  if (mv) mv.onclick = () => copyText('BFA1:' + btoa(unescape(encodeURIComponent(JSON.stringify(store.all())))), document.getElementById('movenote'), 'Copied. Now open the claude.ai version, go to Plan, tap Paste a progress code and paste it in.');
+  document.getElementById('stay').onclick = e => { e.preventDefault(); try { sessionStorage.setItem('bfa:stay', '1') } catch (x) {} route(); };
+}
+
 /* ---------- routing ---------- */
 function route(){
   const h = decodeURIComponent((location.hash || '#home').slice(1));
   let m;
   const tab = /^(w\d+d\d+|week\d+|quiz\d*|home)$/.test(h) || h === '' ? 'home' : /^c-/.test(h) ? 'practice' : /^exam/.test(h) ? 'plan' : /^(tool-|tools$|extras$|glossary$)/.test(h) ? 'more' : h;
   document.querySelectorAll('.mainnav a').forEach(a => { if (a.dataset.v === tab) a.setAttribute('aria-current', 'page'); else a.removeAttribute('aria-current'); });
+  if (OTHER_COPY && !stayHere()) { movedView(); window.scrollTo(0, 0); return; }
   if ((m = h.match(/^w(\d+)d(\d+)$/))) lesson(+m[1], +m[2]);
   else if ((m = h.match(/^week(\d+)$/))) weekView(+m[1]);
   else if ((m = h.match(/^quiz(\d*)$/))) quiz(m[1] ? +m[1] : latest().week);
