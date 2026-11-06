@@ -90,7 +90,7 @@
       ]},
     {id: 'fisher', name: 'Nominal vs real returns', day: 5,
       explain: "<p>A nominal return counts dollars. A real return counts what those dollars can buy. Divide one plus the nominal return by one plus inflation, and subtract one.</p><p>Quick check: nominal minus inflation. The exact version is always a little closer to zero: slightly lower when the real return is positive, slightly less negative when it is negative.</p>",
-      example: "<table><tr><td>5% nominal, 3% inflation</td><td class='num'>1.94% real</td></tr><tr><td>3% pay rise, 4% inflation</td><td class='num'>−0.96% real</td></tr><tr><td>4.6% cash rate, 3% inflation</td><td class='num'>1.55% real</td></tr></table>",
+      example: "<table><tr><td>5% nominal, 3% inflation</td><td class='num'>1.94% real</td></tr><tr><td>3% pay rise, 4% inflation</td><td class='num'>−0.96% real</td></tr><tr><td>4.85% cash rate, 3% inflation</td><td class='num'>1.80% real</td></tr></table>",
       gens: ['realReturn'],
       pool: [
         {q: 'Mixing nominal cash flows with a real discount rate will:', o: ['Overvalue the asset', 'Undervalue the asset', 'Have no effect', 'Only matter for bonds'], a: 0, e: 'A real rate is lower than a nominal one, so discounting inflated cash flows at it gives too high a value.'}

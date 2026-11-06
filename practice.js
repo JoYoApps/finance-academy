@@ -346,6 +346,110 @@
       return mc(`You hold ${$(bal)} in deposits, spread evenly across ${banks} separately licensed Australian bank${banks > 1 ? 's' : ''}. How much is protected by the Financial Claims Scheme?`,
         covered, [250000, bal, covered / 2 + 125000, 250000 * (banks + 1)], $,
         `The guarantee covers up to $250,000 per account holder per licensed ADI. ${banks} × $250,000 = ${$(250000 * banks)} limit; your covered amount is ${$(covered)}${bal > covered ? `, leaving ${$(bal - covered)} unprotected` : ''}.`);
+    },
+    // ---- Week 5: double-entry bookkeeping ----
+    drcrSide(){
+      const A = [['Bank', 'asset'], ['Accounts receivable', 'asset'], ['Equipment', 'asset'], ['Inventory', 'asset'], ['Prepaid insurance', 'asset'],
+        ['Accounts payable', 'liability'], ['Bank loan', 'liability'], ['GST payable', 'liability'], ['Unearned revenue', 'liability'],
+        ['Share capital', 'equity'], ['Retained earnings', 'equity'], ['Sales revenue', 'revenue'], ['Interest income', 'revenue'],
+        ['Wages expense', 'expense'], ['Rent expense', 'expense'], ['Depreciation expense', 'expense'], ['Drawings', 'drawings']];
+      const [name, type] = pick(A), up = R(0, 1), drHome = ['asset', 'expense', 'drawings'].includes(type), side = (drHome === !!up) ? 'Debit' : 'Credit';
+      const wrong = side === 'Debit' ? 'Credit' : 'Debit';
+      const o = [side, wrong, 'Either side, as long as it is labelled', 'Neither: it goes straight to the balance sheet'];
+      const order = [0, 1, 2, 3].sort(() => Math.random() - .5);
+      const lab = {asset: 'an asset', liability: 'a liability', equity: 'an equity', revenue: 'a revenue', expense: 'an expense', drawings: 'a drawings'}[type];
+      return {q: `To ${up ? 'increase' : 'decrease'} ${name} (${lab} account), which side do you post to?`,
+        o: order.map(i => o[i]), a: order.indexOf(0),
+        e: `${name} is ${lab} account. Under DEALER, ${drHome ? 'drawings, expenses and assets increase with debits' : 'liabilities, equity and revenue increase with credits'}, so to ${up ? 'increase' : 'decrease'} it you ${side.toLowerCase()}.`};
+    },
+    drcrEntry(){
+      const amt = R(5, 90) * 100, T = [
+        [`The business borrows ${$(amt)} from the bank.`, 'Dr Bank, Cr Bank loan', ['Dr Bank loan, Cr Bank', 'Dr Bank, Cr Revenue', 'Dr Interest expense, Cr Bank'], 'Bank (asset) up: debit. Loan (liability) up: credit.'],
+        [`The business pays ${$(amt)} of rent from its bank account (ignore GST).`, 'Dr Rent expense, Cr Bank', ['Dr Bank, Cr Rent expense', 'Dr Rent expense, Cr Accounts payable', 'Dr Prepaid rent, Cr Revenue'], 'Expense up: debit. Bank (asset) down: credit.'],
+        [`A customer pays ${$(amt)} they owed on an earlier invoice.`, 'Dr Bank, Cr Accounts receivable', ['Dr Bank, Cr Revenue', 'Dr Accounts receivable, Cr Bank', 'Dr Revenue, Cr Accounts receivable'], 'One asset (receivable) turns into another (cash). Revenue was recorded when the invoice was raised.'],
+        [`The business pays a supplier ${$(amt)} for a bill already entered.`, 'Dr Accounts payable, Cr Bank', ['Dr Supplies expense, Cr Bank', 'Dr Bank, Cr Accounts payable', 'Dr Accounts payable, Cr Revenue'], 'The liability falls (debit) and cash falls (credit). The expense was recorded with the bill.'],
+        [`The company pays a ${$(amt)} dividend to shareholders.`, 'Dr Dividends (or Retained earnings), Cr Bank', ['Dr Dividend expense in the P&L, Cr Bank', 'Dr Bank, Cr Dividends', 'Dr Share capital, Cr Revenue'], 'A dividend is a distribution of profit, not an expense: it reduces equity (debit) and cash (credit).'],
+        [`The owner of a sole trader business transfers ${$(amt)} of personal savings into the business account.`, 'Dr Bank, Cr Owner\'s capital', ['Dr Bank, Cr Revenue', 'Dr Owner\'s capital, Cr Bank', 'Dr Bank, Cr Bank loan'], 'Cash up (debit); the owner\'s equity up (credit). Money from the owner is not income.']];
+      const [q, ans, wr, e] = pick(T), o = [ans, ...wr], order = [0, 1, 2, 3].sort(() => Math.random() - .5);
+      return {q: q + ' Which entry records it?', o: order.map(i => o[i]), a: order.indexOf(0), e};
+    },
+    gstEntry(){
+      const ex = R(4, 400) * 50, inc = ex * 1.1, g = ex / 10, sale = R(0, 1);
+      return mc(`A GST-registered business ${sale ? 'invoices a customer' : 'buys supplies for'} ${$(inc)} including GST. What amount goes to ${sale ? 'revenue' : 'the supplies expense account'}?`,
+        ex, [inc, inc * .9, g, inc - g * 2], $,
+        `${$(inc)} ÷ 1.1 = ${$(ex)}. The GST of ${$(g)} (one-eleventh) goes to ${sale ? 'GST payable, a liability to the ATO' : 'GST receivable, an input tax credit'}.`);
+    },
+    gstBas(){
+      const sales = R(20, 200) * 1100, buys = R(5, Math.floor(sales / 1100 * .9)) * 1100, gp = sales / 11, gr = buys / 11, net = gp - gr;
+      return mc(`In a quarter, a business makes sales of ${$(sales)} and purchases of ${$(buys)}, all including GST. How much GST does it pay the ATO on its BAS?`,
+        net, [gp, (sales - buys) / 10, gp + gr, net * 1.1], $,
+        `GST on sales ${$(sales)} ÷ 11 = ${$(gp)}. GST credits ${$(buys)} ÷ 11 = ${$(gr)}. Net payable ${$(net)}. Dividing by 10 instead of 11 overstates GST.`);
+    },
+    tBalance(){
+      const dr = Array.from({length: 3}, () => R(2, 60) * 100), cr = Array.from({length: 3}, () => R(2, 40) * 100), td = dr.reduce((a, b) => a + b), tc = cr.reduce((a, b) => a + b), bal = td - tc;
+      if (bal === 0) return G.tBalance();
+      return mc(`The Bank account has debits of ${dr.map(x => $(x)).join(', ')} and credits of ${cr.map(x => $(x)).join(', ')}. What is its balance?`,
+        Math.abs(bal), [td, tc, td + tc, Math.abs(bal) / 2], x => $(x) + (x === Math.abs(bal) ? (bal > 0 ? ' debit' : ' credit') : (bal > 0 ? ' credit' : ' debit')),
+        `Debits ${$(td)} − credits ${$(tc)} = ${$(Math.abs(bal))} ${bal > 0 ? 'debit: money in the bank' : 'credit: an overdraft'}.`);
+    },
+    tbMissing(){
+      const bank = R(10, 90) * 100, rec = R(10, 60) * 100, eq = R(5, 30) * 100, exp = R(10, 50) * 100, loan = R(5, 40) * 100, rev = bank + rec + eq + exp - loan - R(5, 30) * 100, cap = bank + rec + exp - loan - rev;
+      if (cap <= 0 || rev <= 0) return G.tbMissing();
+      return mc(`A trial balance shows debits: Bank ${$(bank)}, Receivables ${$(rec)}, Expenses ${$(exp)}; credits: Loan ${$(loan)}, Revenue ${$(rev)}, and Share capital (amount missing). If it balances, what is share capital?`,
+        cap, [bank + rec + exp, loan + rev, cap + 2 * loan, bank + rec - loan], $,
+        `Debits total ${$(bank + rec + exp)}. Credits other than capital ${$(loan + rev)}. Capital = ${$(bank + rec + exp)} − ${$(loan + rev)} = ${$(cap)}.`);
+    },
+    transposition(){
+      const a = R(1, 9), b = R(1, 9), c = R(0, 9);
+      if (a === b) return G.transposition();
+      const right = a * 100 + b * 10 + c, wrong = b * 100 + a * 10 + c, d = Math.abs(right - wrong);
+      return mc(`An invoice for ${$(right)} is posted to the debit side as ${$(wrong)} but correctly as ${$(right)} on the credit side. By how much will the trial balance totals differ?`,
+        d, [right + wrong, d / 9, d * 2, Math.abs(right - wrong) + 9], $,
+        `|${right} − ${wrong}| = ${d} = 9 × ${d / 9}. Swapped digits always give a difference divisible by 9: a quick clue when hunting for errors.`);
+    },
+    prepaidExpense(){
+      const months = pick([6, 12, 24]), per = R(1, 20) * 100, total = per * months, used = R(1, Math.min(months - 1, 11)), exp = per * used, left = total - exp, mode = R(0, 1);
+      if (mode) return mc(`A business pays ${$(total)} in advance for ${months} months of insurance. At year end, ${used} month${used > 1 ? 's have' : ' has'} been used. What is the prepaid insurance asset?`,
+        left, [total, exp, total / 12, left - per], $, `${$(total)} ÷ ${months} = ${$(per)} a month. Used ${used}: ${$(exp)} expense. Remaining ${months - used} months: ${$(left)} prepaid.`);
+      return mc(`A business pays ${$(total)} in advance for ${months} months of software. At year end, ${used} month${used > 1 ? 's have' : ' has'} been used. How much is an expense this year?`,
+        exp, [total, left, per, exp + per], $, `${$(total)} ÷ ${months} = ${$(per)} a month × ${used} = ${$(exp)} expense; ${$(left)} stays as a prepaid asset.`);
+    },
+    accruedInterest(){
+      const loan = R(5, 100) * 10000, r = pick([5, 6, 6.5, 7, 7.5, 8, 9]), m = R(1, 6), i = loan * r / 100 * m / 12;
+      return mc(`A business has a ${$(loan)} loan at ${r}% a year. Interest for the last ${m} month${m > 1 ? 's' : ''} has not yet been paid. What interest must be accrued at year end?`,
+        i, [loan * r / 100, loan * r / 100 / 12, i * 1.1, loan * r / 100 * m], x => $(x, x % 1 ? 2 : 0),
+        `${$(loan)} × ${r}% × ${m}/12 = ${$(i, i % 1 ? 2 : 0)}. Dr Interest expense, Cr Interest payable.`);
+    },
+    unearnedRev(){
+      const months = 12, fee = R(6, 60) * 120, start = R(1, 11), earned = (13 - start - 0) <= 0 ? 1 : R(1, 11), per = fee / months, ue = fee - per * earned;
+      return mc(`A customer pays ${$(fee)} in advance for 12 months of service. By year end, ${earned} month${earned > 1 ? 's' : ''} of service ${earned > 1 ? 'have' : 'has'} been provided. What is the unearned revenue (liability) at year end?`,
+        ue, [fee, per * earned, per, ue + per], $,
+        `${$(fee)} ÷ 12 = ${$(per)} a month. Earned ${earned} months: ${$(per * earned)} revenue. Still owed: ${$(ue)}, a liability.`);
+    },
+    depMonthly(){
+      const cost = R(12, 120) * 1000, life = pick([3, 4, 5, 8, 10]), res = R(0, 3) * cost / 10, m = (cost - res) / life / 12;
+      return mc(`Equipment costs ${$(cost)}, has a residual value of ${$(res)} and a ${life}-year life. What is the monthly straight-line depreciation entry?`,
+        m, [cost / life / 12, (cost - res) / life, m * 1.1, cost / 12 / 10], x => $(x, x % 1 ? 2 : 0),
+        `(${$(cost)} − ${$(res)}) ÷ ${life} = ${$((cost - res) / life)} a year ÷ 12 = ${$(m, m % 1 ? 2 : 0)}. Dr Depreciation expense, Cr Accumulated depreciation.`);
+    },
+    retainedEarnings(){
+      const open = R(10, 200) * 1000, profit = R(-20, 120) * 1000, div = profit > 0 ? R(0, Math.floor(profit / 2000)) * 1000 : 0, close = open + profit - div;
+      if (profit === 0) return G.retainedEarnings();
+      return mc(`Opening retained earnings are ${$(open)}. The company makes a ${profit < 0 ? 'loss' : 'profit'} of ${$(Math.abs(profit))}${div ? ` and pays dividends of ${$(div)}` : ' and pays no dividend'}. What are closing retained earnings?`,
+        close, [open + Math.abs(profit) + div, open - div, open + profit + div, open - profit], $,
+        `${$(open)} ${profit < 0 ? '−' : '+'} ${$(Math.abs(profit))}${div ? ` − ${$(div)}` : ''} = ${$(close)}. Profit closes into retained earnings; dividends come out of it.`);
+    },
+    closingProfit(){
+      const rev = R(50, 400) * 1000, e = Array.from({length: 4}, () => R(5, Math.floor(rev / 5000)) * 1000), te = e.reduce((a, b) => a + b), p = rev - te;
+      return mc(`Before closing, a company's revenue is ${$(rev)} and its expenses are ${e.map(x => $(x)).join(', ')}. In the closing entry, what amount is ${p >= 0 ? 'credited' : 'debited'} to retained earnings?`,
+        Math.abs(p), [rev, te, rev + te, Math.abs(p) / 2], $,
+        `Profit = ${$(rev)} − ${$(te)} = ${p < 0 ? '−' : ''}${$(Math.abs(p))}. The closing entry debits revenue, credits each expense, and ${p >= 0 ? 'credits' : 'debits'} retained earnings with the difference.`);
+    },
+    bankRec(){
+      const book = R(50, 400) * 100, fee = R(1, 9) * 5, intr = R(0, 1) ? R(1, 40) : 0, dit = R(2, 30) * 100, unc = R(1, 20) * 50, right = book - fee + intr, stmt = right - dit + unc;
+      return mc(`The cash book shows ${$(book)}. Not yet in the books: a bank fee of ${$(fee)}${intr ? ` and interest earned of ${$(intr)}` : ''}. Not yet on the statement: a deposit of ${$(dit)} and a payment of ${$(unc)}. What is the correct cash balance?`,
+        right, [book, stmt, book - fee - intr, right + dit - unc], $,
+        `Correct the books: ${$(book)} − ${$(fee)}${intr ? ` + ${$(intr)}` : ''} = ${$(right)}. Check: statement ${$(stmt)} + ${$(dit)} − ${$(unc)} = ${$(right)}. Both agree.`);
     }
   };
   window.PRACTICE = G;

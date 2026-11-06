@@ -37,7 +37,7 @@
     {t: 'The RBA\'s target', tag: 'Australia',
       b: "<p>Since the 1990s the Reserve Bank has targeted consumer price inflation of 2 to 3%. Following the 2023 RBA Review, it now explicitly aims for the <b>midpoint, 2.5%</b>. Its Monetary Policy Board, created in 2025, sets the cash rate at eight meetings a year.</p>",
       src: 'Reserve Bank of Australia, Statement on the Conduct of Monetary Policy',
-      q: {q: 'What inflation rate does the RBA aim for?', o: ['0%', '2.5%', '4.6%', 'Whatever the government sets each year'], a: 1, e: 'The midpoint of the 2 to 3% target band. 4.6% is the cash rate.', c: 'fisher'}},
+      q: {q: 'What inflation rate does the RBA aim for?', o: ['0%', '2.5%', '4.85%', 'Whatever the government sets each year'], a: 1, e: 'The midpoint of the 2 to 3% target band. 4.85% is the cash rate (from 4 November 2026).', c: 'fisher'}},
     {t: 'Bracket creep', tag: 'Personal finance',
       b: "<p>Australian tax thresholds are not automatically indexed to inflation. As wages rise with prices, more of your income falls into higher brackets, so your average tax rate rises even if your real income has not. Economists call this <b>bracket creep</b>.</p><p class='note'>It is another way tax applies to nominal rather than real amounts.</p>",
       src: 'Treasury and Parliamentary Budget Office explanations of bracket creep',

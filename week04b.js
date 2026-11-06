@@ -33,7 +33,7 @@
     {t: 'A $4.5 trillion giant', tag: 'Numbers',
       b: "<p>Compulsory super, now 12% of wages, has made Australia's pension pool one of the largest in the world, at more than $4.5 trillion in 2026 (about $4.8 trillion by June): well above the size of the whole economy's annual output. Super funds are among the biggest owners of ASX shares and major investors in infrastructure, property and private markets.</p>",
       src: 'APRA, Quarterly superannuation statistics',
-      q: {q: 'The superannuation guarantee rate is:', o: ['9.5%', '11%', '12%', '15%'], a: 2, e: '12% from 1 July 2025. Since 1 July 2026 it is calculated on qualifying earnings (mainly ordinary time earnings) and paid with each pay (Payday Super).', c: 'starting-company'}},
+      q: {q: 'The superannuation guarantee rate is:', o: ['9.5%', '11%', '12%', '15%'], a: 2, e: '12% from 1 July 2025. Since 1 July 2026 it is calculated on qualifying earnings (mainly ordinary time earnings) and paid each payday, reaching the fund within 7 business days (Payday Super).', c: 'starting-company'}},
     {t: 'Private credit under the spotlight', tag: 'Australia',
       b: "<p>Private credit funds have grown quickly, offering investors high income from loans to businesses and developers. In 2025 ASIC made the sector a priority, reviewing how funds value loans, how much they charge borrowers and investors, how they handle conflicts, and what they disclose. Questions to ask any fund: who values the loans, what fees go where, and can I get my money out?</p>",
       src: 'ASIC, private credit surveillance and reports (2025)',

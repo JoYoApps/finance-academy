@@ -85,12 +85,12 @@
         {q: 'Who reports large cash transactions to AUSTRAC?', o: ['Every taxpayer', 'Banks and other reporting entities', 'The ACCC', 'Shareholders'], a: 1, e: 'Reporting entities must report threshold and suspicious transactions.'}
       ]},
     {id: 'starting-company', name: 'Setting up: who you deal with', day: 4,
-      explain: "<p>Starting a company touches three bodies: <b>ASIC</b> registers the company and gives it an ACN; each director gets a <b>director ID</b> through Australian Business Registry Services; the <b>ATO</b> handles the ABN, GST registration, PAYG withholding and the superannuation guarantee (12%, paid with each pay since 1 July 2026).</p>",
-      example: "<ol><li>Register company with ASIC (ACN)</li><li>Director IDs for each director</li><li>Apply for ABN; register for GST if turnover will be $75,000 or more</li><li>Set up PAYG withholding and super for staff (super is due with each pay)</li></ol>",
+      explain: "<p>Starting a company touches three bodies: <b>ASIC</b> registers the company and gives it an ACN; each director gets a <b>director ID</b> through Australian Business Registry Services; the <b>ATO</b> handles the ABN, GST registration, PAYG withholding and the superannuation guarantee (12%, due each payday since 1 July 2026).</p>",
+      example: "<ol><li>Register company with ASIC (ACN)</li><li>Director IDs for each director</li><li>Apply for ABN; register for GST if turnover will be $75,000 or more</li><li>Set up PAYG withholding and super for staff (super is due each payday)</li></ol>",
       gens: [],
       pool: [
         {q: 'Which body issues an Australian Company Number (ACN)?', o: ['ATO', 'ASIC', 'APRA', 'ABRS'], a: 1, e: 'ASIC registers companies and issues ACNs. The ABN comes from the Australian Business Register (ATO).'},
-        {q: 'An employer must pay super for an employee at:', o: ['9.5%', '10.5%', '12%', '15%'], a: 2, e: 'The superannuation guarantee is 12% from 1 July 2025. Since 1 July 2026 it is calculated on qualifying earnings (mainly ordinary time earnings) and paid with each pay (Payday Super).'}
+        {q: 'An employer must pay super for an employee at:', o: ['9.5%', '10.5%', '12%', '15%'], a: 2, e: 'The superannuation guarantee is 12% from 1 July 2025. Since 1 July 2026 it is calculated on qualifying earnings (mainly ordinary time earnings) and due each payday (Payday Super).'}
       ]},
     {id: 'month1-apply', name: 'Applying Month 1 to a business', day: 5,
       explain: "<p>Every business question from this month fits one of six headings: how it makes money, its break-even, its cash cycle, its funding, its place in the creditor queue, and its regulators. Work through them in that order on any business you meet.</p>",
