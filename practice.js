@@ -450,6 +450,82 @@
       return mc(`The cash book shows ${$(book)}. Not yet in the books: a bank fee of ${$(fee)}${intr ? ` and interest earned of ${$(intr)}` : ''}. Not yet on the statement: a deposit of ${$(dit)} and a payment of ${$(unc)}. What is the correct cash balance?`,
         right, [book, stmt, book - fee - intr, right + dit - unc], $,
         `Correct the books: ${$(book)} − ${$(fee)}${intr ? ` + ${$(intr)}` : ''} = ${$(right)}. Check: statement ${$(stmt)} + ${$(dit)} − ${$(unc)} = ${$(right)}. Both agree.`);
+    },
+    // ---- Week 6: the income statement ----
+    subscriptionRev(){
+      const months = pick([6, 12, 24]), per = R(2, 60) * 5, fee = per * months, used = R(1, Math.min(months - 1, 11)), rev = per * used;
+      return mc(`A customer pays ${$(fee)} up front for a ${months}-month subscription. By year end, ${used} month${used > 1 ? 's have' : ' has'} been delivered. How much revenue is recognised this year?`,
+        rev, [fee, fee - rev, per, rev + per], $,
+        `Revenue follows delivery: ${$(fee)} ÷ ${months} = ${$(per)} a month × ${used} = ${$(rev)}. The remaining ${$(fee - rev)} is a contract liability.`);
+    },
+    revAllocate(){
+      const a = R(5, 60) * 100, b = R(1, 20) * 100, disc = pick([5, 10, 15, 20]), price = (a + b) * (1 - disc / 100), alloc = price * a / (a + b);
+      return mc(`A product (stand-alone price ${$(a)}) and a support plan (stand-alone price ${$(b)}) are sold together for ${$(price)}. How much of the price is allocated to the product?`,
+        alloc, [a, price - b, price / 2, price * b / (a + b)], $,
+        `${$(price)} × ${$(a)} ÷ ${$(a + b)} = ${$(alloc)}. The ${disc}% bundle discount is shared in proportion to stand-alone prices.`);
+    },
+    cogsFormula(){
+      const open = R(20, 300) * 1000, buy = R(200, 3000) * 1000, close = R(20, 300) * 1000, c = open + buy - close;
+      if (c <= 0) return G.cogsFormula();
+      return mc(`Opening inventory is ${$(open)}, purchases are ${$(buy)} and closing inventory is ${$(close)}. What is cost of sales?`,
+        c, [buy, open + buy + close, buy - open + close, c + close], $,
+        `${$(open)} + ${$(buy)} − ${$(close)} = ${$(c)}. What is not left on the shelf was sold (or used).`);
+    },
+    grossMarginCalc(){
+      const rev = R(200, 5000) * 1000, gm = pick([22, 28, 35, 40, 45, 55, 62, 70]), cos = rev * (1 - gm / 100), gp = rev - cos, mode = R(0, 1);
+      if (mode) return mc(`Revenue is ${$(rev)} and cost of sales is ${$(cos)}. What is the gross margin?`,
+        gm, [100 - gm, gp / cos * 100, gm / 2, gm + 10], x => pct(x, 1),
+        `Gross profit ${$(gp)} ÷ revenue ${$(rev)} = ${pct(gm, 1)}. (Dividing by cost of sales, ${pct(gp / cos * 100, 1)}, gives the markup, not the margin.)`);
+      return mc(`A business has revenue of ${$(rev)} and a gross margin of ${gm}%. What is its gross profit?`,
+        gp, [cos, rev * gm / (100 + gm), rev, gp * 1.1], $,
+        `${$(rev)} × ${gm}% = ${$(gp)}. Cost of sales is the other ${100 - gm}%: ${$(cos)}.`);
+    },
+    fifoWavg(){
+      const q1 = R(5, 20) * 100, p1 = R(10, 40), q2 = R(5, 20) * 100, p2 = p1 + R(1, 8), sold = R(Math.ceil(q1 / 100) + 1, Math.floor((q1 + q2) / 100) - 1) * 100;
+      if (sold <= q1 || sold >= q1 + q2) return G.fifoWavg();
+      const fifo = q1 * p1 + (sold - q1) * p2, avg = (q1 * p1 + q2 * p2) / (q1 + q2), wa = sold * avg, mode = R(0, 1);
+      if (mode) return mc(`A business buys ${num(q1)} units at ${$(p1)} and then ${num(q2)} units at ${$(p2)}. It sells ${num(sold)} units. What is cost of sales under FIFO?`,
+        fifo, [wa, sold * p2, sold * p1, (q1 * p2) + (sold - q1) * p1], $,
+        `FIFO: first ${num(q1)} at ${$(p1)} = ${$(q1 * p1)}, then ${num(sold - q1)} at ${$(p2)} = ${$((sold - q1) * p2)}. Total ${$(fifo)}.`);
+      return mc(`A business buys ${num(q1)} units at ${$(p1)} and then ${num(q2)} units at ${$(p2)}. It sells ${num(sold)} units. What is cost of sales using weighted average cost?`,
+        wa, [fifo, sold * p2, sold * (p1 + p2) / 2 === wa ? sold * p1 : sold * (p1 + p2) / 2, (q1 + q2 - sold) * avg], x => $(x, x % 1 ? 2 : 0),
+        `Average cost = (${$(q1 * p1)} + ${$(q2 * p2)}) ÷ ${num(q1 + q2)} = ${$(avg, 2)}. × ${num(sold)} = ${$(wa, wa % 1 ? 2 : 0)}.`);
+    },
+    ebitdaCalc(){
+      const rev = R(500, 5000) * 1000, gm = pick([35, 40, 45, 50, 60]), gp = rev * gm / 100, opex = Math.round(gp * pick([.55, .65, .7, .75, .8]) / 1000) * 1000, dep = R(10, 150) * 1000, e = gp - opex;
+      return mc(`Revenue is ${$(rev)}, gross margin is ${gm}%, operating expenses (excluding depreciation) are ${$(opex)} and depreciation is ${$(dep)}. What is EBITDA?`,
+        e, [e - dep, rev - opex, gp, e + dep], $,
+        `Gross profit ${$(gp)} − operating expenses ${$(opex)} = ${$(e)}. Depreciation (${$(dep)}) comes after EBITDA: EBIT would be ${$(e - dep)}.`);
+    },
+    operatingLeverage(){
+      const rev = R(10, 50) * 100000, gm = pick([40, 50, 60]), fixed = Math.round(rev * gm / 100 * pick([.6, .7, .8]) / 1000) * 1000, e0 = rev * gm / 100 - fixed, ch = pick([-20, -10, 10, 20]), e1 = rev * (1 + ch / 100) * gm / 100 - fixed, pc = (e1 - e0) / e0 * 100;
+      return mc(`Revenue is ${$(rev)}, the gross margin is ${gm}% (cost of sales is fully variable) and operating expenses are a fixed ${$(fixed)}. If revenue ${ch > 0 ? 'rises' : 'falls'} ${Math.abs(ch)}%, by what percentage does EBITDA change?`,
+        pc, [ch, ch * 2 === pc ? ch * 3 : ch * 2, pc / 2, -pc], x => (x < 0 ? '−' : '+') + pct(Math.abs(x), 1),
+        `EBITDA ${$(e0)} → ${$(e1)}: ${(pc < 0 ? '−' : '+') + pct(Math.abs(pc), 1)}. Fixed costs make earnings move faster than sales: operating leverage.`);
+    },
+    dvDep(){
+      const cost = R(10, 200) * 1000, life = pick([4, 5, 8, 10]), r = 2 / life, y = R(1, 3), open = cost * (1 - r) ** (y - 1), dep = open * r;
+      return mc(`An asset costs ${$(cost)} and has an effective life of ${life} years. Using the diminishing value method (rate = 200% ÷ effective life), what is the depreciation in year ${y}?`,
+        dep, [(cost) / life, cost * r, dep * (1 - r), cost * r * y], x => $(x, x % 1 ? 2 : 0),
+        `Rate = 200% ÷ ${life} = ${pct(r * 100, 1)}. Opening value in year ${y}: ${$(open, open % 1 ? 2 : 0)}. × ${pct(r * 100, 1)} = ${$(dep, dep % 1 ? 2 : 0)}. Straight line would be ${$(cost / life)} every year.`);
+    },
+    interestCover(){
+      const ebit = R(50, 2000) * 1000, cov = pick([1.5, 2, 2.5, 3, 4, 5, 6, 8]), int = ebit / cov;
+      return mc(`EBIT is ${$(ebit)} and interest expense is ${$(int)}. What is interest cover?`,
+        cov, [1 / cov, cov * .75, cov + 1, ebit / (ebit + int)], x => (Math.round(x * 100) / 100) + '×',
+        `${$(ebit)} ÷ ${$(int)} = ${cov}×. Lenders often require a minimum, such as 2 or 3 times, as a covenant.`);
+    },
+    npatCalc(){
+      const ebit = R(100, 3000) * 1000, int = Math.round(ebit * pick([.1, .15, .2, .3]) / 1000) * 1000, t = pick([25, 30]), pbt = ebit - int, np = pbt * (1 - t / 100);
+      return mc(`A company has EBIT of ${$(ebit)}, interest expense of ${$(int)} and pays company tax at ${t}%. What is net profit after tax?`,
+        np, [ebit * (1 - t / 100), pbt, ebit * (1 - t / 100) - int, np * 1.1], $,
+        `Profit before tax ${$(ebit)} − ${$(int)} = ${$(pbt)}. Tax ${t}% = ${$(pbt * t / 100)}. Net profit ${$(np)}. Interest is deducted before tax.`);
+    },
+    epsCalc(){
+      const sh = R(1, 500) * 100000, eps = R(5, 300) / 100, np = sh * eps;
+      return mc(`Net profit after tax is ${$(np)} and there are ${num(sh)} ordinary shares on issue. What is earnings per share?`,
+        eps, [sh / np, eps * 10, eps / 2, eps * 1.3], x => $(x, 2),
+        `${$(np)} ÷ ${num(sh)} = ${$(eps, 2)} per share.`);
     }
   };
   window.PRACTICE = G;
