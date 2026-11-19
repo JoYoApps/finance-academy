@@ -47,8 +47,8 @@
       src: 'RBA, Review of Merchant Card Payment Costs and Surcharging: Conclusions (Media Release 2026-10, 31 March 2026)',
       q: {q: 'In unit economics, a card payment fee is best treated as:', o: ['A fixed cost', 'A variable cost of each sale', 'A capital expense', 'Part of GST'], a: 1, e: 'The fee scales with each sale, so it belongs in the contribution calculation as a variable cost.', c: 'contribution-real'}},
     {t: 'Big businesses pay small ones slowly', tag: 'Australia',
-      b: "<p>Large Australian businesses must report how fast they pay small business suppliers. For January to June 2025 they took on average <b>64 days</b> to pay 95% of their small business invoices, up from 58 days.</p><p class='note'>If you supply big customers, plan your cash flow for about two months' wait, not the 30 days on the invoice. Slow payers are one of the main reasons profitable small businesses run short of cash.</p>",
-      src: 'Payment Times Reporting Regulator, media release 2026',
-      q: {q: 'You invoice a large company on 30-day terms. Based on the reported data, when should your cash flow plan expect the money?', o: ['In 30 days, as the invoice says', 'In about two months', 'Immediately', 'In about a year'], a: 1, e: 'Large businesses took about 64 days on average to pay 95% of small business invoices. Plan for the real wait, not the terms.'}}
+      b: "<p>Large Australian businesses must report how fast they pay small business suppliers. For July to December 2025 they took <b>55 days</b> to pay 95% of their small business invoices, an improvement on 62 days in the half before. Only about 70% of invoices were paid within 30 days.</p><p class='note'>If you supply big customers, plan your cash flow for about two months' wait, not the 30 days on the invoice. Slow payers are one of the main reasons profitable small businesses run short of cash.</p>",
+      src: 'Payment Times Reporting Regulator, Regulator\'s update (August 2026), data for July–December 2025',
+      q: {q: 'You invoice a large company on 30-day terms. Based on the reported data, when should your cash flow plan expect the money?', o: ['In 30 days, as the invoice says', 'In about two months', 'Immediately', 'In about a year'], a: 1, e: 'Large businesses took about 55 days to pay 95% of small business invoices. Plan for the real wait, not the terms.'}}
   ];
 })();

@@ -1,4 +1,4 @@
-// Week 1 knowledge bites: short extras beyond the lessons, each with one question. Facts checked October 2026.
+// Week 1 knowledge bites: short extras beyond the lessons, each with one question. Facts checked November 2026.
 (function(){
   const w = window.WEEKS.find(x => x.week === 1);
   w.bites = [
@@ -22,6 +22,10 @@
       b: "<p>In a liquidation the money is shared in a set order. Broadly: secured creditors are paid from the assets they hold security over (on circulating assets such as stock and receivables, employees rank ahead of them); the liquidator's costs come early; then <b>employees</b> (unpaid wages, super, leave and redundancy) rank ahead of ordinary unsecured creditors such as suppliers; <b>shareholders come last</b>, and usually get nothing.</p><p class='note'>If a failed employer cannot pay staff, the government's Fair Entitlements Guarantee covers some unpaid entitlements.</p>",
       src: 'Corporations Act 2001 (Cth) ss 556, 561; Fair Entitlements Guarantee Act 2012',
       q: {q: 'In a liquidation, which group is paid last?', o: ['Employees', 'Suppliers owed money', 'Secured lenders', 'Ordinary shareholders'], a: 3, e: 'Shareholders own the residual: they are paid only after every creditor. That is why equity is the riskiest place in the capital structure.', c: 'riskreturn'}},
+    {t: 'What suppliers get back', tag: 'Real world',
+      b: "<p>In October 2026 ASIC published a review of insolvent liquidations from July 2021 to June 2025. Only about <b>5%</b> of them paid ordinary unsecured creditors, such as suppliers, anything at all, and where they did, the median payout was under <b>10 cents in the dollar</b>. Half the companies had $10,000 of assets or less when they were wound up.</p><p class='note'>If a customer company fails owing you money, expect to get little or nothing back. Credit checks and tight payment terms are worth more than a claim in the liquidation.</p>",
+      src: 'ASIC Report 843 and media release 26-258MR (27 October 2026)',
+      q: {q: 'A customer company goes into liquidation owing your business $20,000. Based on ASIC\'s review, what is the most likely outcome for you as an unsecured supplier?', o: ['Paid in full', 'About half paid', 'Little or nothing paid', 'Paid before employees'], a: 2, e: 'Only about 5% of liquidations paid unsecured creditors anything, with a median of under 10 cents in the dollar.', c: 'riskreturn'}},
     {t: 'Einstein never said it', tag: 'Myth buster',
       b: "<p>You will often hear that Einstein called compound interest \"the eighth wonder of the world\" or \"the most powerful force in the universe\". There is no reliable record of him saying anything like it. Quote Investigator found the earliest link to Einstein only in 1976, 21 years after his death, and no evidence he said it.</p><p>The maths does not need a famous name: $10,000 at 7% for 40 years grows to about <b>$150,000</b>.</p>",
       src: 'Quote Investigator, "Compound Interest Is Man\'s Greatest Invention" (31 October 2011)',
