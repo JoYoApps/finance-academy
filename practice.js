@@ -526,6 +526,83 @@
       return mc(`Net profit after tax is ${$(np)} and there are ${num(sh)} ordinary shares on issue. What is earnings per share?`,
         eps, [sh / np, eps * 10, eps / 2, eps * 1.3], x => $(x, 2),
         `${$(np)} ÷ ${num(sh)} = ${$(eps, 2)} per share.`);
+    },
+    // Week 7: the balance sheet
+    prepaymentCalc(){
+      const months = 12, per = R(2, 40) * 100, total = per * months, used = R(1, 11), pre = per * (months - used);
+      const mNames = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+      const start = (6 - used + 12) % 12;
+      return mc(`A business pays ${$(total)} for 12 months of insurance starting 1 ${mNames[start]}. Its year ends 30 June. What is the prepayment on the balance sheet at 30 June?`,
+        pre, [total, per * used, per, total - per], $,
+        `${$(total)} ÷ 12 = ${$(per)} a month. ${used} month${used > 1 ? 's are' : ' is'} used by 30 June, so ${12 - used} months (${$(pre)}) are still prepaid.`);
+    },
+    eclAllowance(){
+      const a = R(50, 300, 10) * 1000, b = R(10, 80, 5) * 1000, c = R(5, 40) * 1000, d = R(2, 20) * 1000;
+      const ra = pick([0.5, 1, 2]), rb = pick([3, 4, 5]), rc = pick([10, 15, 20]), rd = pick([50, 60, 70]);
+      const allow = (a * ra + b * rb + c * rc + d * rd) / 100, gross = a + b + c + d;
+      const mode = R(0, 1);
+      const q = `Receivables: not yet due ${$(a)} (${ra}% expected loss), 1–30 days overdue ${$(b)} (${rb}%), 31–60 days ${$(c)} (${rc}%), over 60 days ${$(d)} (${rd}%). What is the ${mode ? 'net receivables figure on the balance sheet' : 'allowance for expected credit losses'}?`;
+      const e = `Allowance = ${$(a * ra / 100)} + ${$(b * rb / 100)} + ${$(c * rc / 100)} + ${$(d * rd / 100)} = ${$(allow)}. Net receivables = ${$(gross)} − ${$(allow)} = ${$(gross - allow)}.`;
+      return mode ? mc(q, gross - allow, [gross, gross + allow, gross - d, allow], $, e)
+                  : mc(q, allow, [d * rd / 100, gross * rb / 100, allow + c * rc / 100, gross - allow], $, e);
+    },
+    impairmentCalc(){
+      const ca = R(20, 200, 5) * 1000, fv = Math.round(ca * R(30, 90) / 100 / 1000) * 1000, viu = Math.round(ca * R(30, 110) / 100 / 1000) * 1000;
+      const rec = Math.max(fv, viu), loss = Math.max(0, ca - rec);
+      if (fv === viu) return G.impairmentCalc();
+      return mc(`An asset has a carrying amount of ${$(ca)}. Its fair value less costs of disposal is ${$(fv)} and its value in use is ${$(viu)}. What impairment loss is recognised?`,
+        loss, [ca - Math.min(fv, viu), Math.abs(viu - fv), ca - (fv + viu) / 2, rec], x => x === 0 ? 'Nil' : $(x),
+        `Recoverable amount = the higher of ${$(fv)} and ${$(viu)} = ${$(rec)}. ${loss ? `Impairment = ${$(ca)} − ${$(rec)} = ${$(loss)}.` : 'It is above the carrying amount, so there is no impairment.'}`);
+    },
+    warrantyProvision(){
+      const n = R(20, 2000, 10), rate = pick([1, 2, 3, 4, 5, 8, 10]), cost = R(5, 80) * 10, prov = n * rate / 100 * cost;
+      if (prov !== Math.round(prov)) return G.warrantyProvision();
+      return mc(`A business sold ${num(n)} products this year with a one-year warranty. Past experience says ${rate}% will need a repair costing about ${$(cost)} each. What warranty provision should it record?`,
+        prov, [n * cost, n * rate * cost, prov / 2, cost * rate], $,
+        `${num(n)} × ${rate}% × ${$(cost)} = ${$(prov)}. The sales have happened, so the obligation exists now even though repairs come later.`);
+    },
+    currentRatioCalc(){
+      const cl = R(50, 500, 5) * 1000, cr = R(6, 25) / 10, ca = Math.round(cl * cr / 1000) * 1000, r = ca / cl;
+      return mc(`A business has current assets of ${$(ca)} and current liabilities of ${$(cl)}. What is its current ratio?`,
+        r, [cl / ca, (ca - cl) / cl, r + 0.5, r * 2], x => (Math.round(x * 100) / 100).toFixed(2),
+        `Current ratio = ${$(ca)} ÷ ${$(cl)} = ${(Math.round(r * 100) / 100).toFixed(2)}. Working capital is ${$(ca - cl)}.`);
+    },
+    quickRatioCalc(){
+      const cash = R(10, 150, 5) * 1000, rec = R(20, 300, 5) * 1000, inv = R(20, 300, 5) * 1000, pre = R(0, 30) * 1000, cl = R(50, 500, 5) * 1000;
+      const q = (cash + rec) / cl, f = x => (Math.round(x * 100) / 100).toFixed(2);
+      return mc(`Cash ${$(cash)}, receivables ${$(rec)}, inventory ${$(inv)}, prepayments ${$(pre)}. Current liabilities ${$(cl)}. What is the quick ratio?`,
+        q, [(cash + rec + inv + pre) / cl, (cash + rec + inv) / cl, cash / cl, (cash + rec + pre) / cl], f,
+        `Quick ratio = (cash + receivables) ÷ current liabilities = ${$(cash + rec)} ÷ ${$(cl)} = ${f(q)}. Inventory and prepayments are left out.`);
+    },
+    leaseLiability(){
+      const pay = R(10, 120) * 1000, n = pick([3, 4, 5, 6, 8, 10]), r = pick([4, 5, 6, 7, 8]) / 100;
+      const af = (1 - Math.pow(1 + r, -n)) / r, L = pay * af;
+      return mc(`A business signs a ${n}-year lease at ${$(pay)} a year, paid at the end of each year. Its borrowing rate is ${r * 100}%. What is the initial lease liability under AASB 16?`,
+        L, [pay * n, pay, pay * n / (1 + r), L * (1 + r)], $,
+        `Lease liability = present value of the payments = ${$(pay)} × [1 − (1 + ${r})^−${n}] ÷ ${r} = ${$(pay)} × ${af.toFixed(4)} = ${$(L)}.`);
+    },
+    leaseYear1Expense(){
+      const pay = R(10, 120) * 1000, n = pick([3, 4, 5, 6, 8, 10]), r = pick([4, 5, 6, 7, 8]) / 100;
+      const L = pay * (1 - Math.pow(1 + r, -n)) / r, dep = L / n, int = L * r, tot = dep + int;
+      return mc(`A ${n}-year lease at ${$(pay)} a year (paid in arrears) gives a lease liability and right-of-use asset of ${$(L)} at a ${r * 100}% rate. What is the total year 1 expense (depreciation plus interest)?`,
+        tot, [pay, dep, int + pay, L / n + pay * r], $,
+        `Depreciation = ${$(L)} ÷ ${n} = ${$(dep)}. Interest = ${$(L)} × ${r * 100}% = ${$(int)}. Total ${$(tot)}, ${tot > pay ? 'more' : 'less'} than the ${$(pay)} rent: AASB 16 front-loads the expense.`);
+    },
+    roeDupont(){
+      const eq = R(100, 2000, 10) * 1000, mult = pick([1.5, 2, 2.5, 3, 4, 5]), assets = eq * mult, roa = R(2, 15) / 100, np = assets * roa, roe = np / eq;
+      const mode = R(0, 1);
+      if (mode) return mc(`Total assets are ${$(assets)}, equity is ${$(eq)} and net profit after tax is ${$(np)}. What is return on equity?`,
+        roe * 100, [roa * 100, roe * 50, np / (assets - eq) * 100, roa * 100 + mult], x => pct(x),
+        `ROE = ${$(np)} ÷ ${$(eq)} = ${pct(roe * 100)}. Check: ROA ${pct(roa * 100)} × equity multiplier ${mult} = ${pct(roe * 100)}.`);
+      return mc(`A business earns a return on assets of ${pct(roa * 100)}. Its total assets are ${mult} times its equity. What is its return on equity?`,
+        roe * 100, [roa * 100, roa * 100 / mult, roa * 100 + mult, roe * 100 * 2], x => pct(x),
+        `ROE = ROA × equity multiplier = ${pct(roa * 100)} × ${mult} = ${pct(roe * 100)}. The more of the assets funded by debt, the bigger the multiplier, and the risk.`);
+    },
+    bookValuePS(){
+      const assets = R(500, 5000, 10) * 1000, liab = Math.round(assets * R(30, 85) / 100 / 1000) * 1000, eq = assets - liab, shares = R(1, 20) * 50000, bv = eq / shares;
+      return mc(`A company has total assets of ${$(assets)}, total liabilities of ${$(liab)} and ${num(shares)} shares on issue. What is its book value per share?`,
+        bv, [assets / shares, liab / shares, eq / shares * 2, (assets + liab) / shares], x => $(x, 2),
+        `Equity = ${$(assets)} − ${$(liab)} = ${$(eq)}. ÷ ${num(shares)} shares = ${$(bv, 2)} per share.`);
     }
   };
   window.PRACTICE = G;
