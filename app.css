@@ -260,3 +260,10 @@ input[type=date],input[type=number],input[type=search],select{font:16px var(--bo
 .moregrid span.d{display:block;font-size:13px;color:var(--muted);margin-top:2px}
 .sizeseg{display:flex;gap:6px;flex-wrap:wrap}
 .sizeseg button[aria-pressed="true"]{background:var(--green);border-color:var(--green);color:var(--card)}
+/* formula under each question (2026-11-24) */
+.fbox{margin:8px 0 12px;padding:8px 12px;border-left:3px solid var(--green);background:var(--card);border-radius:6px;font-size:14px}
+.fbox b{display:block;font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin-bottom:2px}
+.fbox span{display:block;font-family:var(--mono);font-size:13.5px;line-height:1.5}
+.fsheet{margin:8px 0 16px;background:var(--card);border:1px solid var(--rule);border-radius:10px;padding:10px 14px}
+.fsheet summary{cursor:pointer;font-weight:600}
+.fsheet li{font-family:var(--mono);font-size:13.5px;margin:4px 0}

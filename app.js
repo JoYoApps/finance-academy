@@ -162,9 +162,16 @@ function genQ(cid){
   return {q: q.q, o: order.map(i => q.o[i]), a: order.indexOf(q.a), e: q.e, c: cid};
 }
 
+/* formulas under questions (Mitch, 2026-11-24): the formula only, never the answer */
+const fBox = c => { const f = (window.FORMULAS || {})[c]; return f ? `<div class="fbox"><b>Formula</b>${f.map(x => `<span>${esc(x)}</span>`).join('')}</div>` : ''; };
+function formulaSheet(weekNums){
+  const seen = new Set(), items = [];
+  weekNums.map(findWeek).filter(Boolean).forEach(w => (w.concepts || []).forEach(c => { const f = (window.FORMULAS || {})[c.id]; if (f) f.forEach(x => { if (!seen.has(x)) { seen.add(x); items.push(x); } }); }));
+  return items.length ? `<details class="fsheet"><summary>Formula sheet (${items.length} formulas)</summary><ul>${items.map(x => `<li>${esc(x)}</li>`).join('')}</ul></details>` : '';
+}
 /* one multiple-choice question; onAnswer(ok) after a pick */
 function renderQ(el, q, label, onAnswer, opts = {}){
-  el.innerHTML = `<div class="q"><span class="qn">${esc(label)}${q.c && CONCEPTS[q.c] ? ` · <a href="#c-${q.c}">${esc(CONCEPTS[q.c].name)}</a>` : ''}</span><p class="qt">${esc(q.q)}</p>
+  el.innerHTML = `<div class="q"><span class="qn">${esc(label)}${q.c && CONCEPTS[q.c] ? ` · <a href="#c-${q.c}">${esc(CONCEPTS[q.c].name)}</a>` : ''}</span><p class="qt">${esc(q.q)}</p>${fBox(q.c)}
     <div class="opts">${q.o.map((o, j) => `<button class="opt" data-j="${j}">${String.fromCharCode(65 + j)}. ${esc(o)}</button>`).join('')}</div>
     <div class="expl" hidden></div></div>`;
   const paint = picked => {
@@ -375,7 +382,7 @@ function quiz(wn){
     <p class="lede">Part A: ${w.quiz.mc.length} multiple-choice questions, marked as you go. Part B: ${w.quiz.written.length} written questions. Write your answer, then compare it with the model answer. Aim for 80% on Part A before moving on.</p>
     <div class="score" id="score">${score()}</div>
     <h2>Part A · Multiple choice</h2><div id="mcq"></div>
-    <h2>Part B · Written</h2>
+    <h2>Part B · Written</h2>${formulaSheet([w.week])}
     ${w.quiz.written.map((q, i) => `<div class="q"><span class="qn">B${i + 1}</span><p class="qt">${esc(q.q)}</p>
       <label class="note" for="w${i}">Your answer (saved on this device)</label><textarea id="w${i}" data-i="${i}">${esc(drafts[i] || '')}</textarea>
       ${IN_CLAUDE ? `<p class="seg" style="margin-top:8px"><button class="fb" data-i="${i}">Mark my answer</button></p><div class="answer" id="fb${i}" hidden></div>` : ''}
@@ -627,7 +634,7 @@ function examSit(x, cur){
     <div class="lesson-head"><span class="eyebrow">${EXAM_KIND[x.kind]} · in progress</span><h1>${esc(x.title)}</h1></div>
     <div class="score" id="xclock"></div>
     <h2>Section A · Multiple choice (40%)</h2><div id="xmc"></div>
-    <h2>Section B · Short answer (30%)</h2>
+    <h2>Section B · Short answer (30%)</h2>${formulaSheet(x.weeks)}
     ${wq.filter(q => q.k[0] === 's').map(q => `<div class="q"><span class="qn">${q.label} · ${q.marks} marks</span><p class="qt">${esc(q.q)}</p><textarea data-k="${q.k}">${esc(cur.w[q.k] || '')}</textarea></div>`).join('')}
     ${p.case ? `<h2>Section C · Case study (30%)</h2><div class="panel"><b>${esc(p.case.title || 'Case study')}</b>${p.case.brief ? wrapTables(/^</.test(p.case.brief) ? p.case.brief : '<p>' + esc(p.case.brief) + '</p>') : ''}</div>
       ${wq.filter(q => q.k[0] === 'c').map(q => `<div class="q"><span class="qn">${q.label} · ${q.marks} marks</span><p class="qt">${esc(q.q)}</p><textarea data-k="${q.k}">${esc(cur.w[q.k] || '')}</textarea></div>`).join('')}` : ''}
@@ -635,7 +642,7 @@ function examSit(x, cur){
   const box = document.getElementById('xmc');
   p.mc.forEach((q, i) => {
     const el = document.createElement('div'); el.className = 'q';
-    el.innerHTML = `<span class="qn">A${i + 1}</span><p class="qt">${esc(q.q)}</p><div class="opts">${q.o.map((o, j) => `<button class="opt ${cur.mc[i] === j ? 'sel' : ''}" data-j="${j}" aria-pressed="${cur.mc[i] === j}">${String.fromCharCode(65 + j)}. ${esc(o)}</button>`).join('')}</div>`;
+    el.innerHTML = `<span class="qn">A${i + 1}</span><p class="qt">${esc(q.q)}</p>${fBox(q.c)}<div class="opts">${q.o.map((o, j) => `<button class="opt ${cur.mc[i] === j ? 'sel' : ''}" data-j="${j}" aria-pressed="${cur.mc[i] === j}">${String.fromCharCode(65 + j)}. ${esc(o)}</button>`).join('')}</div>`;
     el.querySelectorAll('.opt').forEach(b => b.onclick = () => { const c = store.get(K, cur); c.mc[i] = +b.dataset.j; store.set(K, c); cur = c;
       el.querySelectorAll('.opt').forEach(o => { const on = o === b; o.classList.toggle('sel', on); o.setAttribute('aria-pressed', on); }); tick(); });
     box.appendChild(el);
@@ -707,6 +714,22 @@ function nextExamDue(){
 }
 
 /* ---------- tools ---------- */
+// Every calculator, in the order shown on the More page and at the top of the Toolkit.
+const TOOLS = [
+  ['tool-cagr', '📈', 'Compound return', 'Annual return from a start and end value'],
+  ['tool-tvm', '⏳', 'Time value of money', 'Grow money forward or discount it to today'],
+  ['tool-loan', '🏦', 'Loan repayments', 'Repayment, total interest, first-payment split'],
+  ['tool-dep', '📉', 'Depreciation', 'Straight-line or diminishing value, year by year'],
+  ['tool-resid', '🔧', 'Residual value', 'What an asset is worth on the books after N years'],
+  ['tool-eq', '🧾', 'Equity change', 'Opening equity + profit − dividends = closing'],
+  ['tool-be', '⚖️', 'Break-even', 'Units and sales needed to cover costs'],
+  ['tool-margin', '🏷️', 'Margin and markup', 'Price, cost, margin and markup from any two'],
+  ['tool-gst', '🧮', 'GST', 'Add or take out 10% GST'],
+  ['tool-ratios', '📊', 'Balance sheet ratios', 'Current, quick, debt to equity, ROE'],
+  ['tool-lease', '📄', 'Lease (AASB 16)', 'Lease liability and year 1 expense'],
+  ['tool-cap', '🏠', 'Property value', 'Value from rent and a cap rate'],
+  ['tool-deal', '🤝', 'Deal worksheet', 'Six questions for any investment offer']
+];
 function toolsView(){
   setBrand(latest());
   const t = store.get('tools', {});
@@ -714,7 +737,11 @@ function toolsView(){
   app.innerHTML = `
     <p class="eyebrow" style="margin-top:28px">Calculators and worksheets</p><h1>Toolkit</h1>
     <p class="lede">The tools a finance professional reaches for, built around what you have learned. Use them on real offers and your own numbers. More tools are added as the course covers them.</p>
-    <nav class="toolnav"><a href="#tool-be">Break-even</a><a href="#tool-tvm">Time value</a><a href="#tool-loan">Loan repayments</a><a href="#tool-cap">Property value</a><a href="#tool-deal">Deal worksheet</a></nav>
+    <nav class="toolnav">${TOOLS.map(([id, , n]) => `<a href="#${id}">${n}</a>`).join('')}</nav>
+
+    <section class="tool" id="tool-cagr"><h2>Compound return</h2>
+      <div class="inputs"><label>Start value<input type="number" inputmode="decimal" id="cg-a" value="${v('cg-a', 10000)}"></label><label>End value<input type="number" inputmode="decimal" id="cg-b" value="${v('cg-b', 16000)}"></label><label>Years<input type="number" inputmode="decimal" id="cg-n" value="${v('cg-n', 5)}"></label></div>
+      <div class="out" id="cg-out"></div><p class="note">Compound annual growth rate (CAGR) = (end ÷ start)^(1 ÷ years) − 1. Week 2.</p></section>
 
     <section class="tool" id="tool-be"><h2>Break-even calculator</h2>
       <div class="inputs"><label>Price per unit<input type="number" inputmode="decimal" id="be-p" value="${v('be-p', 5)}"></label><label>Variable cost per unit<input type="number" inputmode="decimal" id="be-v" value="${v('be-v', 1.5)}"></label><label>Fixed costs (period)<input type="number" inputmode="decimal" id="be-f" value="${v('be-f', 7000)}"></label><label>Target profit<input type="number" inputmode="decimal" id="be-t" value="${v('be-t', 2000)}"></label></div>
@@ -727,6 +754,34 @@ function toolsView(){
     <section class="tool" id="tool-loan"><h2>Loan repayments</h2>
       <div class="inputs"><label>Loan amount<input type="number" inputmode="decimal" id="ln-a" value="${v('ln-a', 600000)}"></label><label>Interest rate %<input type="number" inputmode="decimal" id="ln-r" value="${v('ln-r', 6.2)}"></label><label>Term (years)<input type="number" inputmode="numeric" id="ln-n" value="${v('ln-n', 30)}"></label><label>Repayments<select id="ln-f"><option value="12">Monthly</option><option value="26" ${v('ln-f') === '26' ? 'selected' : ''}>Fortnightly</option><option value="52" ${v('ln-f') === '52' ? 'selected' : ''}>Weekly</option></select></label></div>
       <div class="out" id="ln-out"></div><p class="note">Principal and interest. Covered in depth in Week 3 (Money Maths in Practice).</p></section>
+
+    <section class="tool" id="tool-dep"><h2>Depreciation</h2>
+      <div class="inputs"><label>Cost<input type="number" inputmode="decimal" id="dp-c" value="${v('dp-c', 50000)}"></label><label>Residual value at end<input type="number" inputmode="decimal" id="dp-r" value="${v('dp-r', 0)}"></label><label>Useful life (years)<input type="number" inputmode="numeric" id="dp-n" value="${v('dp-n', 5)}"></label><label>Method<select id="dp-m"><option value="sl">Straight line</option><option value="dv" ${v('dp-m') === 'dv' ? 'selected' : ''}>Diminishing value (200% ÷ life)</option></select></label></div>
+      <div class="out" id="dp-out"></div><div class="tbl" id="dp-tbl"></div><p class="note">Diminishing value uses the ATO rate of 200% ÷ effective life. Weeks 5 and 6.</p></section>
+
+    <section class="tool" id="tool-resid"><h2>Residual value (book value after N years)</h2>
+      <div class="inputs"><label>Cost<input type="number" inputmode="decimal" id="rv-c" value="${v('rv-c', 45000)}"></label><label>Depreciation rate % a year<input type="number" inputmode="decimal" id="rv-r" value="${v('rv-r', 25)}"></label><label>Years used<input type="number" inputmode="numeric" id="rv-n" value="${v('rv-n', 3)}"></label><label>Method<select id="rv-m"><option value="dv">Diminishing value (% of book value)</option><option value="sl" ${v('rv-m') === 'sl' ? 'selected' : ''}>Straight line (% of cost)</option></select></label></div>
+      <div class="out" id="rv-out"></div><p class="note">Book value is not market value: check what the asset would actually sell for. Week 7.</p></section>
+
+    <section class="tool" id="tool-eq"><h2>Equity change</h2>
+      <div class="inputs"><label>Opening equity<input type="number" inputmode="decimal" id="eq-o" value="${v('eq-o', 169000)}"></label><label>Net profit after tax (loss as minus)<input type="number" inputmode="decimal" id="eq-p" value="${v('eq-p', 120000)}"></label><label>Dividends or drawings<input type="number" inputmode="decimal" id="eq-d" value="${v('eq-d', 60000)}"></label><label>New capital put in<input type="number" inputmode="decimal" id="eq-c" value="${v('eq-c', 0)}"></label><label>Total assets at year end<input type="number" inputmode="decimal" id="eq-a" value="${v('eq-a', 1152000)}"></label></div>
+      <div class="out" id="eq-out"></div><p class="note">The statement of changes in equity in one line. Defaults are Harbour Coffee from Week 7.</p></section>
+
+    <section class="tool" id="tool-margin"><h2>Margin and markup</h2>
+      <div class="inputs"><label>Cost<input type="number" inputmode="decimal" id="mg-c" value="${v('mg-c', 60)}"></label><label>Selling price (ex GST)<input type="number" inputmode="decimal" id="mg-p" value="${v('mg-p', 100)}"></label><label>Or target margin %<input type="number" inputmode="decimal" id="mg-t" value="${v('mg-t', '')}" placeholder="optional"></label></div>
+      <div class="out" id="mg-out"></div><p class="note">Margin is profit ÷ price; markup is profit ÷ cost. Week 2.</p></section>
+
+    <section class="tool" id="tool-gst"><h2>GST</h2>
+      <div class="inputs"><label>Amount<input type="number" inputmode="decimal" id="gs-a" value="${v('gs-a', 1100)}"></label><label>The amount is<select id="gs-m"><option value="inc">Including GST</option><option value="ex" ${v('gs-m') === 'ex' ? 'selected' : ''}>Excluding GST</option></select></label></div>
+      <div class="out" id="gs-out"></div><p class="note">GST is 10%, so the GST inside a GST-inclusive price is one eleventh. Week 2.</p></section>
+
+    <section class="tool" id="tool-ratios"><h2>Balance sheet ratios</h2>
+      <div class="inputs"><label>Cash<input type="number" inputmode="decimal" id="rt-cash" value="${v('rt-cash', 85000)}"></label><label>Receivables<input type="number" inputmode="decimal" id="rt-rec" value="${v('rt-rec', 150000)}"></label><label>Inventory and prepayments<input type="number" inputmode="decimal" id="rt-inv" value="${v('rt-inv', 155000)}"></label><label>Current liabilities<input type="number" inputmode="decimal" id="rt-cl" value="${v('rt-cl', 348000)}"></label><label>Interest-bearing debt<input type="number" inputmode="decimal" id="rt-debt" value="${v('rt-debt', 500000)}"></label><label>Total assets<input type="number" inputmode="decimal" id="rt-ta" value="${v('rt-ta', 1152000)}"></label><label>Equity<input type="number" inputmode="decimal" id="rt-eq" value="${v('rt-eq', 229000)}"></label><label>Net profit after tax<input type="number" inputmode="decimal" id="rt-np" value="${v('rt-np', 120000)}"></label></div>
+      <div class="out" id="rt-out"></div><p class="note">ROE = ROA × equity multiplier. Defaults are Harbour Coffee from Week 7.</p></section>
+
+    <section class="tool" id="tool-lease"><h2>Lease (AASB 16)</h2>
+      <div class="inputs"><label>Payment a year (in arrears)<input type="number" inputmode="decimal" id="ls-p" value="${v('ls-p', 60000)}"></label><label>Years<input type="number" inputmode="numeric" id="ls-n" value="${v('ls-n', 5)}"></label><label>Borrowing rate %<input type="number" inputmode="decimal" id="ls-r" value="${v('ls-r', 6)}"></label></div>
+      <div class="out" id="ls-out"></div><p class="note">Lease liability = present value of the payments. Week 7, Day 4.</p></section>
 
     <section class="tool" id="tool-cap"><h2>Property value from income</h2>
       <div class="inputs"><label>Gross rent a year<input type="number" inputmode="decimal" id="cp-g" value="${v('cp-g', 140000)}"></label><label>Non-recoverable outgoings a year<input type="number" inputmode="decimal" id="cp-o" value="${v('cp-o', 25000)}"></label><label>Cap rate %<input type="number" inputmode="decimal" id="cp-r" value="${v('cp-r', 6)}"></label></div>
@@ -787,7 +842,59 @@ function toolsView(){
     const irr = ((b / i) ** (1 / n) - 1) * 100, pv = b / (1 + q / 100) ** n;
     document.getElementById('dl-out').innerHTML = row('Annual compound return', irr.toFixed(1) + '%', 1) + row(`Worth today at your ${q}%`, money(pv)) + row('Verdict on numbers alone', pv >= i ? '<span class="ok">Meets your required return</span>' : `<span class="no">Falls short by ${money(i - pv)}</span>`);
   }
-  const all = () => { be(); tvm(); loan(); cap(); deal(); };
+  const val = id => document.getElementById(id).value;
+  const pc = (x, dp = 1) => isFinite(x) ? x.toFixed(dp) + '%' : '—';
+  const tx = (x, dp = 2) => isFinite(x) ? x.toFixed(dp) : '—';
+  function cagr(){
+    const a = num('cg-a'), b = num('cg-b'), n = num('cg-n'), o = document.getElementById('cg-out');
+    if (a <= 0 || b <= 0 || n <= 0) { o.innerHTML = '<p class="no">Enter a start value, end value and years above zero.</p>'; return; }
+    const r = ((b / a) ** (1 / n) - 1) * 100;
+    o.innerHTML = row('Compound return a year', pc(r, 2), 1) + row('Total return', pc((b / a - 1) * 100)) + row('Gain', money(b - a)) + row('Simple average a year (overstates)', pc((b / a - 1) * 100 / n, 2));
+  }
+  function dep(){
+    const c = num('dp-c'), res = Math.min(num('dp-r'), c), n = Math.max(1, Math.round(num('dp-n'))), m = val('dp-m');
+    let bv = c, rows = '';
+    const rate = 2 / n;
+    for (let y = 1; y <= Math.min(n, 40); y++) {
+      let d = m === 'sl' ? (c - res) / n : bv * rate;
+      if (m === 'dv' && bv - d < res) d = Math.max(0, bv - res);
+      if (m === 'dv' && y === n) d = Math.max(0, bv - res);
+      bv -= d;
+      rows += `<tr><td>${y}</td><td class="num">${money(d)}</td><td class="num">${money(c - bv)}</td><td class="num">${money(bv)}</td></tr>`;
+    }
+    document.getElementById('dp-out').innerHTML = (m === 'sl' ? row('Depreciation each year', money((c - res) / n), 1) : row('Rate (200% ÷ life)', pc(rate * 100), 1) + row('Year 1 depreciation', money(c * rate))) + row('Total over the life', money(c - res));
+    document.getElementById('dp-tbl').innerHTML = `<table class="plain"><tr><th>Year</th><th class="num">Depreciation</th><th class="num">Accumulated</th><th class="num">Book value</th></tr>${rows}</table>${m === 'dv' ? '<p class="note">Under diminishing value, the last year writes the asset down to its residual value.</p>' : ''}`;
+  }
+  function resid(){
+    const c = num('rv-c'), r = num('rv-r') / 100, n = Math.max(0, Math.round(num('rv-n'))), m = val('rv-m');
+    const bv = m === 'dv' ? c * (1 - r) ** n : Math.max(0, c * (1 - r * n));
+    document.getElementById('rv-out').innerHTML = row(`Book value after ${n} year${n === 1 ? '' : 's'}`, money(bv), 1) + row('Depreciated so far', money(c - bv)) + row('Share of cost left', pc(c ? bv / c * 100 : 0)) + row(m === 'dv' ? 'Formula' : 'Fully written off after', m === 'dv' ? `cost × (1 − ${tx(r * 100, 1)}%)^${n}` : (r > 0 ? tx(1 / r, 1) + ' years' : '—'));
+  }
+  function eqc(){
+    const o = num('eq-o'), p = num('eq-p'), d = num('eq-d'), c = num('eq-c'), a = num('eq-a'), cl = o + p - d + c, avg = (o + cl) / 2;
+    document.getElementById('eq-out').innerHTML = row('Closing equity', money(cl), 1) + row('Change in the year', (cl >= o ? '+' : '') + money(cl - o)) + row('Profit kept (retained)', money(p - d)) + row('Return on equity (on average equity)', avg > 0 ? pc(p / avg * 100) : '—') + (a > 0 && cl > 0 ? row('Equity multiplier (assets ÷ equity)', tx(a / cl) + '×') + row('Liabilities implied (assets − equity)', money(a - cl)) : '');
+  }
+  function margin(){
+    const c = num('mg-c'), t = val('mg-t');
+    let p = num('mg-p');
+    if (t !== '' && +t < 100) p = c / (1 - +t / 100);
+    const pr = p - c;
+    document.getElementById('mg-out').innerHTML = (t !== '' ? row(`Price for a ${t}% margin`, money(p, 2), 1) : '') + row('Profit per item', money(pr, 2), t === '') + row('Margin (profit ÷ price)', p ? pc(pr / p * 100) : '—') + row('Markup (profit ÷ cost)', c ? pc(pr / c * 100) : '—') + row('Price including GST', money(p * 1.1, 2));
+  }
+  function gst(){
+    const a = num('gs-a'), inc = val('gs-m') === 'inc', ex = inc ? a / 1.1 : a, g = ex * 0.1;
+    document.getElementById('gs-out').innerHTML = row('GST', money(g, 2), 1) + row('Excluding GST', money(ex, 2)) + row('Including GST', money(ex + g, 2));
+  }
+  function ratios(){
+    const cash = num('rt-cash'), rec = num('rt-rec'), inv = num('rt-inv'), cl = num('rt-cl'), debt = num('rt-debt'), ta = num('rt-ta'), eq = num('rt-eq'), np = num('rt-np'), ca = cash + rec + inv;
+    document.getElementById('rt-out').innerHTML = row('Current ratio', cl ? tx(ca / cl) : '—', 1) + row('Quick ratio', cl ? tx((cash + rec) / cl) : '—') + row('Working capital', money(ca - cl)) + row('Debt to equity', eq ? tx(debt / eq) + '×' : '—') + row('Net debt', money(debt - cash)) + row('Return on assets', ta ? pc(np / ta * 100) : '—') + row('Equity multiplier', eq ? tx(ta / eq) + '×' : '—') + row('Return on equity', eq ? pc(np / eq * 100) : '—', 1);
+  }
+  function lease(){
+    const pay = num('ls-p'), n = Math.max(1, Math.round(num('ls-n'))), r = num('ls-r') / 100;
+    const af = r ? (1 - (1 + r) ** -n) / r : n, L = pay * af, int = L * r, dpr = L / n, close = L + int - pay;
+    document.getElementById('ls-out').innerHTML = row('Lease liability at start', money(L), 1) + row('Annuity factor', tx(af, 4)) + row('Year 1 interest', money(int)) + row('Year 1 depreciation', money(dpr)) + row('Year 1 expense (vs rent ' + money(pay) + ')', money(int + dpr)) + row('Liability after year 1', money(close));
+  }
+  const all = () => { cagr(); be(); tvm(); loan(); dep(); resid(); eqc(); margin(); gst(); ratios(); lease(); cap(); deal(); };
   app.querySelectorAll('.tool input, .tool select, .tool textarea').forEach(e => e.addEventListener('input', () => { all(); save(); }));
   document.getElementById('dl-copy').onclick = () => {
     const i = num('dl-i'), b = num('dl-b'), n = num('dl-n');
@@ -888,10 +995,14 @@ function moreView(){
     <div class="moregrid">
       ${card('#extras', '💡', 'Knowledge bites', 'One-minute extras with a question at the end')}
       ${card('#exams', '📝', 'Exams', 'Month, term and final exams, with marking')}
-      ${card('#tools', '🧮', 'Tools', 'Loan, savings, tax and GST calculators')}
       ${card('#glossary', '📖', 'Glossary', 'Every term in the course, searchable')}
       <button type="button" id="morecalc"><span class="ic" aria-hidden="true">➗</span><span><b>Pocket calculator</b><span class="d">Also on the green button at the top of every page</span></span></button>
       ${card('#plan', '🗺️', 'Course plan', 'All 19 months, your progress and the exams')}
+    </div>
+    <h2 id="calculators">Calculators</h2>
+    <p class="note">Tap one to open it. They all sit on one Toolkit page, and remember what you typed on this device.</p>
+    <div class="moregrid">
+      ${TOOLS.map(([id, ic, n, d]) => card('#' + id, ic, n, d)).join('')}
     </div>
     <h2>Text size</h2>
     <p class="sizeseg">${SIZES.map(([t, v]) => `<button type="button" data-z="${v}" aria-pressed="${v === z}">${t}</button>`).join('')}</p>
