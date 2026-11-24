@@ -818,6 +818,7 @@ function nextExamDue(){
 // Every calculator, in the order shown on the More page and at the top of the Toolkit.
 const TOOLS = [
   ['tool-cagr', '📈', 'Compound return', 'Annual return from a start and end value'],
+  ['tool-sg', '📈', 'Simple growth', 'Start and end value: $ change, total % and % a year'],
   ['tool-tvm', '⏳', 'Time value of money', 'Grow money forward or discount it to today'],
   ['tool-loan', '🏦', 'Loan repayments', 'Repayment, total interest, first-payment split'],
   ['tool-dep', '📉', 'Depreciation', 'Straight-line or diminishing value, year by year'],
@@ -847,6 +848,10 @@ function toolsView(){
     <section class="tool" id="tool-cagr"><h2>Compound return</h2>
       <div class="inputs"><label>Start value<input type="number" inputmode="decimal" id="cg-a" value="${v('cg-a', 10000)}"></label><label>End value<input type="number" inputmode="decimal" id="cg-b" value="${v('cg-b', 16000)}"></label><label>Years<input type="number" inputmode="decimal" id="cg-n" value="${v('cg-n', 5)}"></label></div>
       <div class="out" id="cg-out"></div><p class="note">Compound annual growth rate (CAGR) = (end ÷ start)^(1 ÷ years) − 1. Week 2.</p></section>
+
+    <section class="tool" id="tool-sg"><h2>Simple growth</h2>
+      <div class="inputs"><label>Start value<input type="number" inputmode="decimal" id="sg-a" value="${v('sg-a', 500000)}"></label><label>End value<input type="number" inputmode="decimal" id="sg-b" value="${v('sg-b', 650000)}"></label><label>Or growth % (leave end value blank)<input type="number" inputmode="decimal" id="sg-g" value="${v('sg-g', '')}" placeholder="optional"></label><label>Years<input type="number" inputmode="decimal" id="sg-n" value="${v('sg-n', 5)}"></label></div>
+      <div class="out" id="sg-out"></div><p class="note">Total growth = (end − start) ÷ start. Simple growth a year = total growth ÷ years. Compound growth a year = (end ÷ start)^(1 ÷ years) − 1, which is always a bit lower because each year's growth builds on the last. Week 2.</p></section>
 
     <section class="tool" id="tool-be"><h2>Break-even calculator</h2>
       <div class="inputs"><label>Price per unit<input type="number" inputmode="decimal" id="be-p" value="${v('be-p', 5)}"></label><label>Variable cost per unit<input type="number" inputmode="decimal" id="be-v" value="${v('be-v', 1.5)}"></label><label>Fixed costs (period)<input type="number" inputmode="decimal" id="be-f" value="${v('be-f', 7000)}"></label><label>Target profit<input type="number" inputmode="decimal" id="be-t" value="${v('be-t', 2000)}"></label></div>
@@ -948,6 +953,10 @@ function toolsView(){
     const p = num('pp-p'), d = num('pp-d'), cv = num('pp-v'), l = num('pp-l'), y = num('pp-y'), eq = cv - l, g = cv - p, sg = x => (x >= 0 ? '+' : '−');
     document.getElementById('pp-out').innerHTML = row('Equity now (value − loan)', money(eq), 1) + row('Value increase', sg(g) + money(Math.abs(g)) + (p ? ` (${sg(g)}${pc(Math.abs(g) / p * 100)})` : '')) + (y > 0 && p > 0 && cv > 0 ? row('Growth a year (compound)', pc(((cv / p) ** (1 / y) - 1) * 100)) : '') + row('Loan at purchase (price − deposit)', money(p - d)) + row('LVR at purchase', p ? pc((p - d) / p * 100) : '—') + row('LVR now (loan ÷ value)', cv ? pc(l / cv * 100) : '—') + row('Return on your deposit', d ? sg(eq - d) + pc(Math.abs(eq - d) / d * 100) : '—', 1) + row('Equity you could borrow against (to 80% LVR)', money(Math.max(0, cv * 0.8 - l)));
   }
+  function sg(){
+    const a = num('sg-a'), g = val('sg-g'), n = num('sg-n'), b = val('sg-b') === '' && g !== '' ? a * (1 + +g / 100) : num('sg-b'), ch = b - a, t = a ? ch / a * 100 : NaN, sgn = x => x >= 0 ? '+' : '−';
+    document.getElementById('sg-out').innerHTML = row('Total growth', isFinite(t) ? sgn(t) + pc(Math.abs(t)) : '—', 1) + row('Change in dollars', sgn(ch) + money(Math.abs(ch))) + row('End value', money(b)) + (n > 0 ? row('Simple growth a year (total ÷ years)', isFinite(t) ? sgn(t) + pc(Math.abs(t / n)) : '—', 1) + row('Compound growth a year (CAGR)', a > 0 && b > 0 ? pc(((b / a) ** (1 / n) - 1) * 100) : '—') + row('Dollar change a year', sgn(ch) + money(Math.abs(ch / n))) : '');
+  }
   function cap(){
     const g = num('cp-g'), o = num('cp-o'), r = num('cp-r'), ni = g - o;
     document.getElementById('cp-out').innerHTML = row('Net income', money(ni)) + row('Value', r > 0 ? money(ni / (r / 100)) : '—', 1);
@@ -1015,7 +1024,7 @@ function toolsView(){
     const af = r ? (1 - (1 + r) ** -n) / r : n, L = pay * af, int = L * r, dpr = L / n, close = L + int - pay;
     document.getElementById('ls-out').innerHTML = row('Lease liability at start', money(L), 1) + row('Annuity factor', tx(af, 4)) + row('Year 1 interest', money(int)) + row('Year 1 depreciation', money(dpr)) + row('Year 1 expense (vs rent ' + money(pay) + ')', money(int + dpr)) + row('Liability after year 1', money(close));
   }
-  const all = () => { cagr(); be(); tvm(); loan(); dep(); resid(); eqc(); lev(); margin(); gst(); ratios(); lease(); cap(); prop(); deal(); };
+  const all = () => { cagr(); be(); tvm(); loan(); dep(); resid(); eqc(); lev(); margin(); gst(); ratios(); lease(); cap(); prop(); sg(); deal(); };
   /* tidy layout for every calculator (Mitch, 2026-11-24): A to Z, clear heading + subtitle, "You enter" / "Results" / "How it works" */
   { const all_ = app.querySelectorAll('section.tool'), last = all_[all_.length - 1], host = last && last.parentNode, after = last && last.nextSibling;
     const secs = TOOLS_AZ().map(([id, , n, d]) => { const el = document.getElementById(id); if (!el) return null;
