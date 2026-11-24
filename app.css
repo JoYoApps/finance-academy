@@ -315,3 +315,13 @@ input[type=date],input[type=number],input[type=search],select{font:16px var(--bo
 @media (min-width:640px){.calclist,.toolnav{grid-template-columns:repeat(3,minmax(0,1fr))}}
 .calclist a,.toolnav a{display:flex;align-items:center;min-height:56px;padding:10px 12px;border:1px solid var(--rule);border-top:1px solid var(--rule);border-radius:10px;background:var(--card);color:var(--ink);font-weight:600;font-size:15px;line-height:1.25;text-decoration:none}
 .calclist a:first-child{border-top:1px solid var(--rule)}
+
+/* summary tables (2026-11-24) */
+.sumlink{margin:-4px 0 12px;font-size:14.5px}
+.sumcard{background:var(--card);border:1px solid var(--rule);border-top:4px solid var(--green);border-radius:12px;padding:16px;margin:18px 0;scroll-margin-top:120px}
+.sumcard h2{margin:0;font-size:20px}
+.sumcard .note{margin:2px 0 10px}
+.sumtab{width:100%;border-collapse:collapse;font-size:15px;line-height:1.4}
+.sumtab th,.sumtab td{text-align:left;vertical-align:top;padding:9px 8px;border-top:1px solid var(--rule)}
+.sumtab tr:first-child th{border-top:0;font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--green);padding-bottom:6px}
+.sumtab th[scope=row]{font-weight:600;width:46%}

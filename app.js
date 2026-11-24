@@ -226,6 +226,18 @@ function fBox(c, qtext){
   const rest = f.filter(x => !main.includes(x));
   return `<div class="fbox"><span class="flab">Formula</span>${main.map(fmlHTML).join('')}${rest.length ? `<details class="fmore"><summary>More formulas for this topic</summary>${rest.map(fmlHTML).join('')}</details>` : ''}</div>`;
 }
+/* summary tables for revision (Mitch, 2026-11-24) */
+const sumFor = c => (window.SUMMARIES || []).find(t => t.c.includes(c));
+const sumLink = c => { const t = c && sumFor(c); return t ? `<p class="sumlink"><a href="#sum-${t.id}">Summary table: ${esc(t.title)} →</a></p>` : ''; };
+const sumTable = t => `<section class="sumcard" id="sum-${t.id}"><h2>${esc(t.title)}</h2><p class="note">Week ${t.week}</p><div class="tbl"><table class="sumtab"><tr>${t.head.map(h => `<th>${esc(h)}</th>`).join('')}</tr>${t.rows.map(r => `<tr>${r.map((x, i) => i ? `<td>${esc(x)}</td>` : `<th scope="row">${esc(x)}</th>`).join('')}</tr>`).join('')}</table></div></section>`;
+function summariesView(){
+  setBrand(latest());
+  const all = (window.SUMMARIES || []).slice().sort((a, b) => a.week - b.week || a.title.localeCompare(b.title));
+  app.innerHTML = `<p class="eyebrow" style="margin-top:28px">Revision</p><h1>Summaries</h1>
+    <p class="lede">One-page tables of which method, ratio or formula to use when. New ones are added as the course goes on.</p>
+    <nav class="toolnav">${all.map(t => `<a href="#sum-${t.id}">${esc(t.title)}</a>`).join('')}</nav>
+    ${all.map(sumTable).join('')}`;
+}
 function formulaSheet(weekNums){
   const seen = new Set(), items = [];
   weekNums.map(findWeek).filter(Boolean).forEach(w => (w.concepts || []).forEach(c => { const f = (window.FORMULAS || {})[c.id]; if (f) f.forEach(x => { if (!seen.has(x)) { seen.add(x); items.push(x); } }); }));
@@ -245,7 +257,7 @@ function typedOK(q, mine){
 const canType = q => q.n !== undefined && isFinite(numIn(q.o[q.a])) && !/\b(and|or)\b/i.test(q.o[q.a]);
 function renderTyped(el, q, label, onAnswer, mode){
   const write = mode === 'write';
-  el.innerHTML = `<div class="q typed"><span class="qn">${esc(label)}${q.c && CONCEPTS[q.c] ? ` · <a href="#c-${q.c}">${esc(CONCEPTS[q.c].name)}</a>` : ''}</span><span class="tbadge">${write ? 'Write your answer' : 'Type your answer'}</span><p class="qt">${esc(q.q)}</p>${fBox(q.c, q.q)}
+  el.innerHTML = `<div class="q typed"><span class="qn">${esc(label)}${q.c && CONCEPTS[q.c] ? ` · <a href="#c-${q.c}">${esc(CONCEPTS[q.c].name)}</a>` : ''}</span><span class="tbadge">${write ? 'Write your answer' : 'Type your answer'}</span><p class="qt">${esc(q.q)}</p>${fBox(q.c, q.q)}${sumLink(q.c)}
     ${write ? '<textarea class="tin" rows="5" placeholder="Show your working and give your answer. Claude will mark it."></textarea>' : '<input class="tin" type="text" inputmode="decimal" autocomplete="off" placeholder="Your answer (a number)">'}
     <p class="seg"><button class="primary tgo">${write ? 'Mark my answer' : 'Check'}</button> <button class="tskip">Show options instead</button></p>
     <div class="answer tfb" hidden></div><div class="expl" hidden></div></div>`;
@@ -270,7 +282,7 @@ function renderTyped(el, q, label, onAnswer, mode){
 }
 function renderQ(el, q, label, onAnswer, opts = {}){
   if ((opts.mode === 'num' && canType(q)) || opts.mode === 'write') return renderTyped(el, q, label, onAnswer, opts.mode);
-  el.innerHTML = `<div class="q"><span class="qn">${esc(label)}${q.c && CONCEPTS[q.c] ? ` · <a href="#c-${q.c}">${esc(CONCEPTS[q.c].name)}</a>` : ''}</span><p class="qt">${esc(q.q)}</p>${fBox(q.c, q.q)}
+  el.innerHTML = `<div class="q"><span class="qn">${esc(label)}${q.c && CONCEPTS[q.c] ? ` · <a href="#c-${q.c}">${esc(CONCEPTS[q.c].name)}</a>` : ''}</span><p class="qt">${esc(q.q)}</p>${fBox(q.c, q.q)}${sumLink(q.c)}
     <div class="opts">${q.o.map((o, j) => `<button class="opt" data-j="${j}">${String.fromCharCode(65 + j)}. ${esc(o)}</button>`).join('')}</div>
     <div class="expl" hidden></div></div>`;
   const paint = picked => {
@@ -1134,6 +1146,7 @@ function moreView(){
     <div class="moregrid">
       ${card('#extras', '💡', 'Knowledge bites', 'One-minute extras with a question at the end')}
       ${card('#exams', '📝', 'Exams', 'Month, term and final exams, with marking')}
+      ${card('#summaries', '📋', 'Summaries', 'Which method or ratio to use when, in one table each')}
       ${card('#glossary', '📖', 'Glossary', 'Every term in the course, searchable')}
       <button type="button" id="morecalc"><span class="ic" aria-hidden="true">➗</span><span><b>Pocket calculator</b><span class="d">Also on the green button at the top of every page</span></span></button>
       ${card('#plan', '🗺️', 'Course plan', 'All 19 months, your progress and the exams')}
@@ -1187,6 +1200,8 @@ function route(){
   else if (h === 'plan' || h === 'map') planView();
   else if (h === 'practice') practice();
   else if (h === 'tools') toolsView();
+  else if (h === 'summaries') summariesView();
+  else if (/^sum-/.test(h)) { summariesView(); const el = document.getElementById(h); if (el) { setTimeout(() => el.scrollIntoView(), 0); return; } }
   else if (h === 'glossary') glossaryView();
   else if (h === 'ask') askView();
   else if (h === 'more') moreView();
