@@ -783,7 +783,8 @@ const TOOLS = [
   ['tool-loan', '🏦', 'Loan repayments', 'Repayment, total interest, first-payment split'],
   ['tool-dep', '📉', 'Depreciation', 'Straight-line or diminishing value, year by year'],
   ['tool-resid', '🔧', 'Residual value', 'What an asset is worth on the books after N years'],
-  ['tool-eq', '🧾', 'Equity change', 'Opening equity + profit − dividends = closing'],
+  ['tool-eq', '🧾', 'Equity change (accounts)', 'Opening equity + profit − dividends = closing'],
+  ['tool-lev', '🏡', 'Equity change (leverage)', 'Property bought with a deposit: how much your equity moves'],
   ['tool-be', '⚖️', 'Break-even', 'Units and sales needed to cover costs'],
   ['tool-margin', '🏷️', 'Margin and markup', 'Price, cost, margin and markup from any two'],
   ['tool-gst', '🧮', 'GST', 'Add or take out 10% GST'],
@@ -825,9 +826,13 @@ function toolsView(){
       <div class="inputs"><label>Cost<input type="number" inputmode="decimal" id="rv-c" value="${v('rv-c', 45000)}"></label><label>Depreciation rate % a year<input type="number" inputmode="decimal" id="rv-r" value="${v('rv-r', 25)}"></label><label>Years used<input type="number" inputmode="numeric" id="rv-n" value="${v('rv-n', 3)}"></label><label>Method<select id="rv-m"><option value="dv">Diminishing value (% of book value)</option><option value="sl" ${v('rv-m') === 'sl' ? 'selected' : ''}>Straight line (% of cost)</option></select></label></div>
       <div class="out" id="rv-out"></div><p class="note">Book value is not market value: check what the asset would actually sell for. Week 7.</p></section>
 
-    <section class="tool" id="tool-eq"><h2>Equity change</h2>
+    <section class="tool" id="tool-eq"><h2>Equity change (accounts)</h2>
       <div class="inputs"><label>Opening equity<input type="number" inputmode="decimal" id="eq-o" value="${v('eq-o', 169000)}"></label><label>Net profit after tax (loss as minus)<input type="number" inputmode="decimal" id="eq-p" value="${v('eq-p', 120000)}"></label><label>Dividends or drawings<input type="number" inputmode="decimal" id="eq-d" value="${v('eq-d', 60000)}"></label><label>New capital put in<input type="number" inputmode="decimal" id="eq-c" value="${v('eq-c', 0)}"></label><label>Total assets at year end<input type="number" inputmode="decimal" id="eq-a" value="${v('eq-a', 1152000)}"></label></div>
       <div class="out" id="eq-out"></div><p class="note">The statement of changes in equity in one line. Defaults are Harbour Coffee from Week 7.</p></section>
+
+    <section class="tool" id="tool-lev"><h2>Equity change (leverage)</h2>
+      <div class="inputs"><label>Purchase price<input type="number" inputmode="decimal" id="lv-p" value="${v('lv-p', 800000)}"></label><label>Deposit %<input type="number" inputmode="decimal" id="lv-d" value="${v('lv-d', 25)}"></label><label>Change in value % (fall as minus)<input type="number" inputmode="decimal" id="lv-c" value="${v('lv-c', 5)}"></label></div>
+      <div class="out" id="lv-out"></div><p class="note">% change in your equity = % change in value × (price ÷ deposit). The loan stays the same, so the whole gain or loss lands on your deposit. Weeks 1 and 3.</p></section>
 
     <section class="tool" id="tool-margin"><h2>Margin and markup</h2>
       <div class="inputs"><label>Cost<input type="number" inputmode="decimal" id="mg-c" value="${v('mg-c', 60)}"></label><label>Selling price (ex GST)<input type="number" inputmode="decimal" id="mg-p" value="${v('mg-p', 100)}"></label><label>Or target margin %<input type="number" inputmode="decimal" id="mg-t" value="${v('mg-t', '')}" placeholder="optional"></label></div>
@@ -936,6 +941,10 @@ function toolsView(){
     const o = num('eq-o'), p = num('eq-p'), d = num('eq-d'), c = num('eq-c'), a = num('eq-a'), cl = o + p - d + c, avg = (o + cl) / 2;
     document.getElementById('eq-out').innerHTML = row('Closing equity', money(cl), 1) + row('Change in the year', (cl >= o ? '+' : '') + money(cl - o)) + row('Profit kept (retained)', money(p - d)) + row('Return on equity (on average equity)', avg > 0 ? pc(p / avg * 100) : '—') + (a > 0 && cl > 0 ? row('Equity multiplier (assets ÷ equity)', tx(a / cl) + '×') + row('Liabilities implied (assets − equity)', money(a - cl)) : '');
   }
+  function lev(){
+    const p = num('lv-p'), d = num('lv-d') / 100, c = num('lv-c') / 100, dep = p * d, loan = p - dep, nv = p * (1 + c), ne = nv - loan;
+    document.getElementById('lv-out').innerHTML = row('Change in your equity', dep ? (ne >= dep ? '+' : '') + pc((ne - dep) / dep * 100) : '—', 1) + row('Leverage multiple (price ÷ deposit)', d ? tx(1 / d, 2) + '×' : '—') + row('Equity before (deposit)', money(dep)) + row('Loan', money(loan)) + row('New property value', money(nv)) + row('Gain or loss in dollars', (nv >= p ? '+' : '') + money(nv - p)) + row('Equity after (new value − loan)', money(ne));
+  }
   function margin(){
     const c = num('mg-c'), t = val('mg-t');
     let p = num('mg-p');
@@ -956,7 +965,7 @@ function toolsView(){
     const af = r ? (1 - (1 + r) ** -n) / r : n, L = pay * af, int = L * r, dpr = L / n, close = L + int - pay;
     document.getElementById('ls-out').innerHTML = row('Lease liability at start', money(L), 1) + row('Annuity factor', tx(af, 4)) + row('Year 1 interest', money(int)) + row('Year 1 depreciation', money(dpr)) + row('Year 1 expense (vs rent ' + money(pay) + ')', money(int + dpr)) + row('Liability after year 1', money(close));
   }
-  const all = () => { cagr(); be(); tvm(); loan(); dep(); resid(); eqc(); margin(); gst(); ratios(); lease(); cap(); deal(); };
+  const all = () => { cagr(); be(); tvm(); loan(); dep(); resid(); eqc(); lev(); margin(); gst(); ratios(); lease(); cap(); deal(); };
   app.querySelectorAll('.tool input, .tool select, .tool textarea').forEach(e => e.addEventListener('input', () => { all(); save(); }));
   document.getElementById('dl-copy').onclick = () => {
     const i = num('dl-i'), b = num('dl-b'), n = num('dl-n');
