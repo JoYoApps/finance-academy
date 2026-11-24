@@ -162,16 +162,78 @@ function genQ(cid){
   return {q: q.q, o: order.map(i => q.o[i]), a: order.indexOf(q.a), e: q.e, c: cid};
 }
 
-/* formulas under questions (Mitch, 2026-11-24): the formula only, never the answer */
-const fBox = c => { const f = (window.FORMULAS || {})[c]; return f ? `<div class="fbox"><b>Formula</b>${f.map(x => `<span>${esc(x)}</span>`).join('')}</div>` : ''; };
+/* formulas under questions (Mitch, 2026-11-24): the formula only, never the answer.
+   Each formula string "Name = expression" is laid out like maths: stacked fractions, superscript powers.
+   Only the formula(s) that match the question are shown; the rest of that concept's formulas sit behind "More formulas". */
+function fmlParse(s){
+  // split into top-level tokens: groups (...) [...], operators, and word runs
+  const toks = []; let i = 0;
+  while (i < s.length) {
+    const ch = s[i];
+    if (ch === '(' || ch === '[') {
+      const close = ch === '(' ? ')' : ']'; let d = 0, j = i;
+      for (; j < s.length; j++) { if (s[j] === ch) d++; else if (s[j] === close && --d === 0) break; }
+      toks.push({g: s.slice(i + 1, j), o: ch, c: close}); i = j + 1;
+    } else if (ch === '^') {
+      let j = i + 1, exp;
+      if (s[j] === '(') { let d = 0; for (; j < s.length; j++) { if (s[j] === '(') d++; else if (s[j] === ')' && --d === 0) break; } exp = s.slice(i + 2, j); j++; }
+      else { const m = /^[−-]?[A-Za-z0-9₀-₉]+/.exec(s.slice(j)); exp = m ? m[0] : ''; j += exp.length; }
+      toks.push({sup: exp}); i = j;
+    } else if ('×÷+−'.includes(ch) && s[i - 1] === ' ' && s[i + 1] === ' ') { toks.push({op: ch}); i += 1; }
+    else { let j = i; while (j < s.length && !'([^'.includes(s[j]) && !('×÷+−'.includes(s[j]) && s[j - 1] === ' ' && s[j + 1] === ' ')) j++; toks.push({w: s.slice(i, j)}); i = j; }
+  }
+  return toks;
+}
+function fmlRender(toks){
+  // turn "A ÷ B" into a stacked fraction: numerator = the product run before ÷, denominator = the next factor
+  const out = []; // items: {h: html, k: 'term'|'op'}
+  const piece = t => t.g !== undefined ? `<span class="fgrp">${t.o}${fmlRender(fmlParse(t.g))}${t.c}</span>` : t.sup !== undefined ? `<sup>${esc(t.sup.replace(/ ÷ /g, '/'))}</sup>` : t.op ? ` ${t.op} ` : esc(t.w);
+  const bare = t => t.g !== undefined && t.o === '(' ? fmlRender(fmlParse(t.g)) : piece(t);
+  for (let i = 0; i < toks.length; i++) {
+    const t = toks[i];
+    if (t.op === '÷') {
+      // numerator: pull items back to the last + or − operator
+      const num = []; while (out.length && !(out[out.length - 1].op && '+−'.includes(out[out.length - 1].op))) num.unshift(out.pop());
+      // denominator: next factor, with its power if any
+      let j = i + 1; while (j < toks.length && toks[j].w !== undefined && !toks[j].w.trim()) j++;
+      const den = [toks[j]]; if (toks[j + 1] && toks[j + 1].sup !== undefined) den.push(toks[++j]);
+      const numR = num.filter(x => x.op || x.g || x.h.trim());
+      let numH = numR.map(x => x.h).join('').trim();
+      if (numR.length === 1 && numR[0].g) numH = numR[0].inner;
+      const denH = den.length === 1 ? bare(den[0]).trim() : den.map(piece).join('').trim();
+      out.push({h: `<span class="frac"><span class="fn">${numH}</span><span class="fd">${denH}</span></span>`});
+      i = j; continue;
+    }
+    out.push({h: piece(t), op: t.op, g: t.g !== undefined && t.o === '(', inner: t.g !== undefined ? fmlRender(fmlParse(t.g)) : ''});
+  }
+  return out.map(x => x.h).join('').replace(/\s{2,}/g, ' ');
+}
+function fmlHTML(s){
+  const k = s.indexOf(' = ');
+  if (k < 0) return `<div class="frow ftext">${esc(s)}</div>`;
+  const name = s.slice(0, k), rest = s.slice(k + 3).split(' = ');
+  return `<div class="frow"><span class="fname">${esc(name)}</span><span class="feq">=</span><span class="fexp">${rest.map(r => fmlRender(fmlParse(r))).join('<span class="feq">=</span>')}</span></div>`;
+}
+const FSTOP = new Set('a an the of and or to in for is are be by on at as with what how much many this that its it your you per each from'.split(' '));
+const fwords = s => s.toLowerCase().replace(/[^a-z0-9 ]/g, ' ').split(/\s+/).filter(w => w.length > 2 && !FSTOP.has(w));
+function fBox(c, qtext){
+  const f = (window.FORMULAS || {})[c]; if (!f) return '';
+  // pick the formula(s) whose name best matches the question
+  const qw = new Set(fwords(qtext || ''));
+  const sc = f.map(x => { const k = x.indexOf(' = '), name = k < 0 ? x : x.slice(0, k); const ws = fwords(name); return ws.length ? ws.filter(w => qw.has(w) || qw.has(w.replace(/s$/, ''))).length / ws.length : 0; });
+  const best = Math.max(...sc);
+  const main = best > 0 ? f.filter((_, i) => sc[i] === best).slice(0, 2) : f.slice(0, 1);
+  const rest = f.filter(x => !main.includes(x));
+  return `<div class="fbox"><span class="flab">Formula</span>${main.map(fmlHTML).join('')}${rest.length ? `<details class="fmore"><summary>More formulas for this topic</summary>${rest.map(fmlHTML).join('')}</details>` : ''}</div>`;
+}
 function formulaSheet(weekNums){
   const seen = new Set(), items = [];
   weekNums.map(findWeek).filter(Boolean).forEach(w => (w.concepts || []).forEach(c => { const f = (window.FORMULAS || {})[c.id]; if (f) f.forEach(x => { if (!seen.has(x)) { seen.add(x); items.push(x); } }); }));
-  return items.length ? `<details class="fsheet"><summary>Formula sheet (${items.length} formulas)</summary><ul>${items.map(x => `<li>${esc(x)}</li>`).join('')}</ul></details>` : '';
+  return items.length ? `<details class="fsheet"><summary>Formula sheet (${items.length} formulas)</summary>${items.map(fmlHTML).join('')}</details>` : '';
 }
 /* one multiple-choice question; onAnswer(ok) after a pick */
 function renderQ(el, q, label, onAnswer, opts = {}){
-  el.innerHTML = `<div class="q"><span class="qn">${esc(label)}${q.c && CONCEPTS[q.c] ? ` · <a href="#c-${q.c}">${esc(CONCEPTS[q.c].name)}</a>` : ''}</span><p class="qt">${esc(q.q)}</p>${fBox(q.c)}
+  el.innerHTML = `<div class="q"><span class="qn">${esc(label)}${q.c && CONCEPTS[q.c] ? ` · <a href="#c-${q.c}">${esc(CONCEPTS[q.c].name)}</a>` : ''}</span><p class="qt">${esc(q.q)}</p>${fBox(q.c, q.q)}
     <div class="opts">${q.o.map((o, j) => `<button class="opt" data-j="${j}">${String.fromCharCode(65 + j)}. ${esc(o)}</button>`).join('')}</div>
     <div class="expl" hidden></div></div>`;
   const paint = picked => {
@@ -642,7 +704,7 @@ function examSit(x, cur){
   const box = document.getElementById('xmc');
   p.mc.forEach((q, i) => {
     const el = document.createElement('div'); el.className = 'q';
-    el.innerHTML = `<span class="qn">A${i + 1}</span><p class="qt">${esc(q.q)}</p>${fBox(q.c)}<div class="opts">${q.o.map((o, j) => `<button class="opt ${cur.mc[i] === j ? 'sel' : ''}" data-j="${j}" aria-pressed="${cur.mc[i] === j}">${String.fromCharCode(65 + j)}. ${esc(o)}</button>`).join('')}</div>`;
+    el.innerHTML = `<span class="qn">A${i + 1}</span><p class="qt">${esc(q.q)}</p>${fBox(q.c, q.q)}<div class="opts">${q.o.map((o, j) => `<button class="opt ${cur.mc[i] === j ? 'sel' : ''}" data-j="${j}" aria-pressed="${cur.mc[i] === j}">${String.fromCharCode(65 + j)}. ${esc(o)}</button>`).join('')}</div>`;
     el.querySelectorAll('.opt').forEach(b => b.onclick = () => { const c = store.get(K, cur); c.mc[i] = +b.dataset.j; store.set(K, c); cur = c;
       el.querySelectorAll('.opt').forEach(o => { const on = o === b; o.classList.toggle('sel', on); o.setAttribute('aria-pressed', on); }); tick(); });
     box.appendChild(el);
