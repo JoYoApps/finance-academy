@@ -793,6 +793,8 @@ const TOOLS = [
   ['tool-cap', '🏠', 'Property value', 'Value from rent and a cap rate'],
   ['tool-deal', '🤝', 'Deal worksheet', 'Six questions for any investment offer']
 ];
+/* calculators listed A to Z, no emoji (Mitch, 2026-11-24) */
+const TOOLS_AZ = () => TOOLS.slice().sort((a, b) => a[2].localeCompare(b[2]));
 function toolsView(){
   setBrand(latest());
   const t = store.get('tools', {});
@@ -800,7 +802,7 @@ function toolsView(){
   app.innerHTML = `
     <p class="eyebrow" style="margin-top:28px">Calculators and worksheets</p><h1>Toolkit</h1>
     <p class="lede">The tools a finance professional reaches for, built around what you have learned. Use them on real offers and your own numbers. More tools are added as the course covers them.</p>
-    <nav class="toolnav">${TOOLS.map(([id, , n]) => `<a href="#${id}">${n}</a>`).join('')}</nav>
+    <nav class="toolnav">${TOOLS_AZ().map(([id, , n]) => `<a href="#${id}">${n}</a>`).join('')}</nav>
 
     <section class="tool" id="tool-cagr"><h2>Compound return</h2>
       <div class="inputs"><label>Start value<input type="number" inputmode="decimal" id="cg-a" value="${v('cg-a', 10000)}"></label><label>End value<input type="number" inputmode="decimal" id="cg-b" value="${v('cg-b', 16000)}"></label><label>Years<input type="number" inputmode="decimal" id="cg-n" value="${v('cg-n', 5)}"></label></div>
@@ -1072,8 +1074,8 @@ function moreView(){
     </div>
     <h2 id="calculators">Calculators</h2>
     <p class="note">Tap one to open it. They all sit on one Toolkit page, and remember what you typed on this device.</p>
-    <div class="moregrid">
-      ${TOOLS.map(([id, ic, n, d]) => card('#' + id, ic, n, d)).join('')}
+    <div class="calclist">
+      ${TOOLS_AZ().map(([id, , n, d]) => `<a href="#${id}"><span class="cn">${n}</span><span class="cd">${d}</span><span class="cc" aria-hidden="true">›</span></a>`).join('')}
     </div>
     <h2>Text size</h2>
     <p class="sizeseg">${SIZES.map(([t, v]) => `<button type="button" data-z="${v}" aria-pressed="${v === z}">${t}</button>`).join('')}</p>
