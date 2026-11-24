@@ -286,3 +286,19 @@ input[type=date],input[type=number],input[type=search],select{font:16px var(--bo
 .calclist .cd{grid-column:1;font-size:13.5px;color:var(--muted);line-height:1.35;margin-top:2px}
 .calclist .cc{grid-column:2;grid-row:1 / span 2;align-self:center;font-size:22px;color:var(--muted)}
 .calclist a:active{background:var(--rule)}
+
+/* calculator pages: clearer headings and results (2026-11-24) */
+.tool{border-top:4px solid var(--green);padding-top:18px;scroll-margin-top:120px}
+.tool h2{margin:0;font-size:22px;line-height:1.2}
+.tool .tsub{margin:4px 0 14px;color:var(--muted);font-size:14.5px}
+.tool .tlab{margin:14px 0 8px;font-size:11px;font-weight:650;letter-spacing:.08em;text-transform:uppercase;color:var(--green)}
+.tool .inputs label{font-size:14px;color:var(--ink)}
+.tool .inputs input,.tool .inputs select{font-size:17px}
+.tool .out{display:block;margin-top:0;padding:4px 14px;border:1px solid var(--rule);border-radius:10px;background:color-mix(in srgb,var(--green) 4%,var(--card))}
+.tool .out div{flex-direction:row;justify-content:space-between;align-items:baseline;gap:12px;padding:9px 0;border-top:1px solid var(--rule)}
+.tool .out div:first-child{border-top:0}
+.tool .out span{font-size:14px;color:var(--ink)}
+.tool .out b{text-align:right;white-space:nowrap}
+.tool .out b.big{font-size:20px}
+.tool .thow{margin-top:12px;padding:10px 12px;border-radius:10px;background:var(--bg, transparent);border:1px dashed var(--rule);font-size:14px;line-height:1.45}
+.tool .thow b{display:block;font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-bottom:2px}

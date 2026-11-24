@@ -790,7 +790,8 @@ const TOOLS = [
   ['tool-gst', '🧮', 'GST', 'Add or take out 10% GST'],
   ['tool-ratios', '📊', 'Balance sheet ratios', 'Current, quick, debt to equity, ROE'],
   ['tool-lease', '📄', 'Lease (AASB 16)', 'Lease liability and year 1 expense'],
-  ['tool-cap', '🏠', 'Property value', 'Value from rent and a cap rate'],
+  ['tool-cap', '🏠', 'Property value (cap rate)', 'Value from rent and a cap rate'],
+  ['tool-prop', '🏘️', 'Property growth and equity', 'Purchase price vs value today: growth, equity, LVR, return on deposit'],
   ['tool-deal', '🤝', 'Deal worksheet', 'Six questions for any investment offer']
 ];
 /* calculators listed A to Z, no emoji (Mitch, 2026-11-24) */
@@ -856,6 +857,10 @@ function toolsView(){
       <div class="inputs"><label>Gross rent a year<input type="number" inputmode="decimal" id="cp-g" value="${v('cp-g', 140000)}"></label><label>Non-recoverable outgoings a year<input type="number" inputmode="decimal" id="cp-o" value="${v('cp-o', 25000)}"></label><label>Cap rate %<input type="number" inputmode="decimal" id="cp-r" value="${v('cp-r', 6)}"></label></div>
       <div class="out" id="cp-out"></div><div class="tbl" id="cp-sens"></div><p class="note">The full capitalisation method, with vacancy, incentives and capex adjustments, comes in Month 11.</p></section>
 
+    <section class="tool" id="tool-prop"><h2>Property growth and equity</h2>
+      <div class="inputs"><label>Purchase price<input type="number" inputmode="decimal" id="pp-p" value="${v('pp-p', 800000)}"></label><label>Deposit paid (plus costs you put in)<input type="number" inputmode="decimal" id="pp-d" value="${v('pp-d', 200000)}"></label><label>Current value<input type="number" inputmode="decimal" id="pp-v" value="${v('pp-v', 900000)}"></label><label>Loan owing now<input type="number" inputmode="decimal" id="pp-l" value="${v('pp-l', 580000)}"></label><label>Years owned (optional)<input type="number" inputmode="decimal" id="pp-y" value="${v('pp-y', 3)}"></label></div>
+      <div class="out" id="pp-out"></div><p class="note">Equity = current value − loan owing. LVR = loan ÷ value. Return on deposit = (equity now − deposit) ÷ deposit. It ignores rent, interest and selling costs. Weeks 1 and 3.</p></section>
+
     <section class="tool" id="tool-deal"><h2>Deal worksheet: the six questions</h2>
       <p class="note">Saved on this device. Work through it for any offer, then paste it into the project thread for a second opinion.</p>
       <div class="inputs"><label>You invest now<input type="number" inputmode="decimal" id="dl-i" value="${v('dl-i', 50000)}"></label><label>You get back (total)<input type="number" inputmode="decimal" id="dl-b" value="${v('dl-b', 65000)}"></label><label>After (years)<input type="number" inputmode="decimal" id="dl-n" value="${v('dl-n', 2)}"></label><label>Your required return %<input type="number" inputmode="decimal" id="dl-q" value="${v('dl-q', 20)}"></label></div>
@@ -899,6 +904,10 @@ function toolsView(){
     const lbl = {12: 'Monthly', 26: 'Fortnightly', 52: 'Weekly'}[fq];
     const firstInt = a * i;
     document.getElementById('ln-out').innerHTML = row(lbl + ' repayment', money(pmt, 2), 1) + row('Total repaid', money(pmt * n)) + row('Total interest', money(pmt * n - a)) + row('Interest in first repayment', money(firstInt, 2) + ` (${pmt ? Math.round(firstInt / pmt * 100) : 0}%)`);
+  }
+  function prop(){
+    const p = num('pp-p'), d = num('pp-d'), cv = num('pp-v'), l = num('pp-l'), y = num('pp-y'), eq = cv - l, g = cv - p, sg = x => (x >= 0 ? '+' : '−');
+    document.getElementById('pp-out').innerHTML = row('Equity now (value − loan)', money(eq), 1) + row('Value increase', sg(g) + money(Math.abs(g)) + (p ? ` (${sg(g)}${pc(Math.abs(g) / p * 100)})` : '')) + (y > 0 && p > 0 && cv > 0 ? row('Growth a year (compound)', pc(((cv / p) ** (1 / y) - 1) * 100)) : '') + row('Loan at purchase (price − deposit)', money(p - d)) + row('LVR at purchase', p ? pc((p - d) / p * 100) : '—') + row('LVR now (loan ÷ value)', cv ? pc(l / cv * 100) : '—') + row('Return on your deposit', d ? sg(eq - d) + pc(Math.abs(eq - d) / d * 100) : '—', 1) + row('Equity you could borrow against (to 80% LVR)', money(Math.max(0, cv * 0.8 - l)));
   }
   function cap(){
     const g = num('cp-g'), o = num('cp-o'), r = num('cp-r'), ni = g - o;
@@ -967,7 +976,16 @@ function toolsView(){
     const af = r ? (1 - (1 + r) ** -n) / r : n, L = pay * af, int = L * r, dpr = L / n, close = L + int - pay;
     document.getElementById('ls-out').innerHTML = row('Lease liability at start', money(L), 1) + row('Annuity factor', tx(af, 4)) + row('Year 1 interest', money(int)) + row('Year 1 depreciation', money(dpr)) + row('Year 1 expense (vs rent ' + money(pay) + ')', money(int + dpr)) + row('Liability after year 1', money(close));
   }
-  const all = () => { cagr(); be(); tvm(); loan(); dep(); resid(); eqc(); lev(); margin(); gst(); ratios(); lease(); cap(); deal(); };
+  const all = () => { cagr(); be(); tvm(); loan(); dep(); resid(); eqc(); lev(); margin(); gst(); ratios(); lease(); cap(); prop(); deal(); };
+  /* tidy layout for every calculator (Mitch, 2026-11-24): A to Z, clear heading + subtitle, "You enter" / "Results" / "How it works" */
+  { const all_ = app.querySelectorAll('section.tool'), last = all_[all_.length - 1], host = last && last.parentNode, after = last && last.nextSibling;
+    const secs = TOOLS_AZ().map(([id, , n, d]) => { const el = document.getElementById(id); if (!el) return null;
+      const h = el.querySelector('h2'); if (h) { h.textContent = n; h.insertAdjacentHTML('afterend', `<p class="tsub">${d}</p>`); }
+      const inp = el.querySelector('.inputs'); if (inp) inp.insertAdjacentHTML('beforebegin', '<p class="tlab">You enter</p>');
+      const out = el.querySelector('.out'); if (out) out.insertAdjacentHTML('beforebegin', '<p class="tlab">Results</p>');
+      el.querySelectorAll(':scope > p.note').forEach(nt => { nt.classList.add('thow'); nt.insertAdjacentHTML('afterbegin', '<b>How it works</b>'); });
+      return el; }).filter(Boolean);
+    if (host) secs.forEach(el => host.insertBefore(el, after)); }
   app.querySelectorAll('.tool input, .tool select, .tool textarea').forEach(e => e.addEventListener('input', () => { all(); save(); }));
   document.getElementById('dl-copy').onclick = () => {
     const i = num('dl-i'), b = num('dl-b'), n = num('dl-n');
