@@ -12,7 +12,7 @@
     for (const w of wrongs) { const f = fmt(w); if (!seen.has(f) && isFinite(w) && (w > 0 || correct <= 0)) { seen.add(f); opts.push(f); } if (opts.length === 4) break; }
     let k = 2; while (opts.length < 4) { const f = fmt(correct * (k % 2 ? 1 + k * .07 : 1 - k * .06)); if (!seen.has(f)) { seen.add(f); opts.push(f); } k++; }
     const order = opts.map((o, i) => [Math.random(), i]).sort((x, y) => x[0] - y[0]).map(x => x[1]);
-    return {q, o: order.map(i => opts[i]), a: order.indexOf(0), e};
+    return {q, o: order.map(i => opts[i]), a: order.indexOf(0), e, n: correct}; // n: lets the app ask for a typed answer
   }
   const G = {
     breakeven(){

@@ -232,7 +232,44 @@ function formulaSheet(weekNums){
   return items.length ? `<details class="fsheet"><summary>Formula sheet (${items.length} formulas)</summary>${items.map(fmlHTML).join('')}</details>` : '';
 }
 /* one multiple-choice question; onAnswer(ok) after a pick */
+/* typed answers (Mitch, 2026-11-24): some questions ask him to type the number, others to write his working for Claude to mark */
+const numIn = t => { const m = String(t).replace(/[−–]/g, '-').replace(/,/g, '').match(/-?\d*\.?\d+/); return m ? parseFloat(m[0]) : NaN; };
+function typedOK(q, mine){
+  const shown = q.o[q.a], want = numIn(shown); let got = numIn(mine);
+  if (!isFinite(want) || !isFinite(got)) return false;
+  if (!/^\s*[-−]/.test(mine) && /^\s*[−-]/.test(shown.replace(/^[^\d−-]*/, m => m.includes('−') || m.includes('-') ? '-' : ''))) got = -Math.abs(got);
+  const dp = ((shown.replace(/,/g, '').match(/\.(\d+)/) || [, ''])[1]).length;
+  const tol = Math.max(Math.abs(want) * 0.01, 0.5 * 10 ** -dp);
+  return Math.abs(got - want) <= tol || (/%/.test(shown) && Math.abs(got * 100 - want) <= tol);
+}
+const canType = q => q.n !== undefined && isFinite(numIn(q.o[q.a])) && !/\b(and|or)\b/i.test(q.o[q.a]);
+function renderTyped(el, q, label, onAnswer, mode){
+  const write = mode === 'write';
+  el.innerHTML = `<div class="q typed"><span class="qn">${esc(label)}${q.c && CONCEPTS[q.c] ? ` · <a href="#c-${q.c}">${esc(CONCEPTS[q.c].name)}</a>` : ''}</span><span class="tbadge">${write ? 'Write your answer' : 'Type your answer'}</span><p class="qt">${esc(q.q)}</p>${fBox(q.c, q.q)}
+    ${write ? '<textarea class="tin" rows="5" placeholder="Show your working and give your answer. Claude will mark it."></textarea>' : '<input class="tin" type="text" inputmode="decimal" autocomplete="off" placeholder="Your answer (a number)">'}
+    <p class="seg"><button class="primary tgo">${write ? 'Mark my answer' : 'Check'}</button> <button class="tskip">Show options instead</button></p>
+    <div class="answer tfb" hidden></div><div class="expl" hidden></div></div>`;
+  const inp = el.querySelector('.tin'), fb = el.querySelector('.tfb'), ex = el.querySelector('.expl');
+  const finish = ok => {
+    el.querySelector('.tgo').disabled = true; el.querySelector('.tskip').remove(); inp.readOnly = true;
+    ex.hidden = false;
+    ex.innerHTML = `${write ? '' : `<b class="${ok ? 'ok' : 'no'}">${ok ? 'Correct.' : 'Not quite.'}</b> `}The answer is <b>${esc(q.o[q.a])}</b>. ${esc(q.e)}` + (!ok && q.c && CONCEPTS[q.c] ? ` <a class="help" href="#c-${q.c}">See it explained another way →</a>` : '');
+    onAnswer && onAnswer(ok, ok ? q.a : -1);
+  };
+  el.querySelector('.tskip').onclick = () => renderQ(el, q, label, onAnswer, {mode: 'mc'});
+  if (!write) inp.addEventListener('keydown', e => { if (e.key === 'Enter') el.querySelector('.tgo').click(); });
+  el.querySelector('.tgo').onclick = () => {
+    const mine = inp.value.trim();
+    if (!mine) { fb.hidden = false; fb.textContent = write ? 'Write your answer in the box first.' : 'Type a number first.'; return; }
+    if (!write) { fb.hidden = true; finish(typedOK(q, mine)); return; }
+    if (!ask.ready) { fb.hidden = false; fb.textContent = 'Still connecting to Claude. Try again in a moment, or tap Show options instead.'; return; }
+    fb.hidden = false; el.querySelector('.tgo').disabled = true;
+    askClaude(`${TUTOR}\n\nMark Mitch's typed answer to this practice question out of 5, like a fair but encouraging lecturer. Start with "Mark: N/5". Then in two or three short lines say what he got right and what to fix (correct any calculation). Under 120 words. Do not repeat the full model answer, it is shown to him separately.\n\nQuestion:\n${q.q}\n\nCorrect answer: ${q.o[q.a]}\nModel working: ${q.e}\n\nMitch's answer:\n${mine}`, fb,
+      text => { const m = text.match(/Mark:\s*(\d)/); finish(m ? +m[1] >= 3 : false); });
+  };
+}
 function renderQ(el, q, label, onAnswer, opts = {}){
+  if ((opts.mode === 'num' && canType(q)) || opts.mode === 'write') return renderTyped(el, q, label, onAnswer, opts.mode);
   el.innerHTML = `<div class="q"><span class="qn">${esc(label)}${q.c && CONCEPTS[q.c] ? ` · <a href="#c-${q.c}">${esc(CONCEPTS[q.c].name)}</a>` : ''}</span><p class="qt">${esc(q.q)}</p>${fBox(q.c, q.q)}
     <div class="opts">${q.o.map((o, j) => `<button class="opt" data-j="${j}">${String.fromCharCode(65 + j)}. ${esc(o)}</button>`).join('')}</div>
     <div class="expl" hidden></div></div>`;
@@ -263,6 +300,8 @@ function session(el, pickNext, total, title, done){
     const q = pickNext(n);
     if (!q) { box.innerHTML = '<p class="note">No questions available yet.</p>'; return; }
     box.innerHTML = `<div class="prog"><span>${title} · question ${n + 1} of ${total}</span><span>${right} correct</span></div><div class="qbox"></div><div class="extra"></div><p class="nextrow"><button class="primary" id="nq" hidden>Next question →</button></p>`;
+    // mix in typed answers: every 4th (or the last of a short set) is written and marked by Claude; about half of the calculations ask for the number
+    const mode = IN_CLAUDE && q.c && ((n + 1) % 4 === 0 || (total < 4 && n === total - 1)) ? 'write' : canType(q) && Math.random() < 0.5 ? 'num' : 'mc';
     renderQ(box.querySelector('.qbox'), q, 'Q' + (n + 1), ok => {
       record(q.c, ok); if (ok) right++;
       wrongStreak[q.c] = ok ? 0 : (wrongStreak[q.c] || 0) + 1;
@@ -271,7 +310,7 @@ function session(el, pickNext, total, title, done){
         box.querySelector('.extra').innerHTML = `<div class="assist"><span class="eyebrow">Let's look at this another way</span><h3>${esc(c.name)}</h3>${wrapTables(c.explain)}<details><summary>Worked example</summary>${wrapTables(c.example)}</details></div>`;
       }
       n++; const b = box.querySelector('#nq'); b.hidden = false; b.onclick = next; b.focus({preventScroll: true});
-    });
+    }, {mode});
   }
   next();
 }
@@ -1093,7 +1132,7 @@ function moreView(){
     <h2 id="calculators">Calculators</h2>
     <p class="note">Tap one to open it. They all sit on one Toolkit page, and remember what you typed on this device.</p>
     <div class="calclist">
-      ${TOOLS_AZ().map(([id, , n, d]) => `<a href="#${id}"><span class="cn">${n}</span><span class="cd">${d}</span><span class="cc" aria-hidden="true">›</span></a>`).join('')}
+      ${TOOLS_AZ().map(([id, , n]) => `<a href="#${id}">${n}</a>`).join('')}
     </div>
     <h2>Text size</h2>
     <p class="sizeseg">${SIZES.map(([t, v]) => `<button type="button" data-z="${v}" aria-pressed="${v === z}">${t}</button>`).join('')}</p>

@@ -302,3 +302,16 @@ input[type=date],input[type=number],input[type=search],select{font:16px var(--bo
 .tool .out b.big{font-size:20px}
 .tool .thow{margin-top:12px;padding:10px 12px;border-radius:10px;background:var(--bg, transparent);border:1px dashed var(--rule);font-size:14px;line-height:1.45}
 .tool .thow b{display:block;font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-bottom:2px}
+
+/* typed-answer questions (2026-11-24) */
+.q.typed .tbadge{display:table;margin:8px 0 4px;padding:3px 10px;border-radius:999px;background:var(--green);color:var(--card);font-size:12px;font-weight:650;letter-spacing:.03em}
+.q.typed .tin{width:100%;box-sizing:border-box;font-size:18px;padding:12px;border:2px solid var(--green);border-radius:10px;background:var(--card);color:var(--ink)}
+.q.typed textarea.tin{font-size:16px;line-height:1.45;font-family:inherit}
+.q.typed .seg{display:flex;gap:8px;flex-wrap:wrap;margin:10px 0}
+.q.typed .tskip{background:none;border:0;color:var(--muted);text-decoration:underline;padding:8px 4px}
+
+/* calculators as an aligned grid of equal tiles, names only (2026-11-24) */
+.calclist,.toolnav{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;background:none;border:0;border-radius:0;overflow:visible;margin:10px 0 20px}
+@media (min-width:640px){.calclist,.toolnav{grid-template-columns:repeat(3,minmax(0,1fr))}}
+.calclist a,.toolnav a{display:flex;align-items:center;min-height:56px;padding:10px 12px;border:1px solid var(--rule);border-top:1px solid var(--rule);border-radius:10px;background:var(--card);color:var(--ink);font-weight:600;font-size:15px;line-height:1.25;text-decoration:none}
+.calclist a:first-child{border-top:1px solid var(--rule)}
